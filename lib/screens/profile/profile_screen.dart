@@ -116,34 +116,77 @@ class _ProfileHeader extends StatefulWidget {
 
 class _ProfileHeaderState extends State<_ProfileHeader> {
   bool _uploading = false;
+  double _uploadProgress = 0;
 
   Future<void> _pickAndUpload() async {
     final picker = ImagePicker();
     final xFile  = await picker.pickImage(
-        source: ImageSource.gallery, imageQuality: 75, maxWidth: 600);
+        source: ImageSource.gallery,
+        imageQuality: 80,
+        maxWidth: 800,
+        maxHeight: 800);
     if (xFile == null) return;
     if (!mounted) return;
 
-    setState(() => _uploading = true);
+    setState(() { _uploading = true; _uploadProgress = 0; });
+
     try {
       final uid = widget.auth.user?.uid ?? '';
-      final ref = FirebaseStorage.instance
-          .ref()
-          .child('avatars/$uid.jpg');
+      if (uid.isEmpty) throw Exception('Нэвтрээгүй байна');
+
+      // Read bytes (works on all platforms — no dart:io needed)
       final bytes = await xFile.readAsBytes();
-      await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
+
+      final ref = FirebaseStorage.instance
+          .ref('avatars/$uid.jpg');
+
+      // Upload with progress tracking
+      final uploadTask = ref.putData(
+        bytes,
+        SettableMetadata(contentType: 'image/jpeg'),
+      );
+
+      uploadTask.snapshotEvents.listen((snap) {
+        if (!mounted) return;
+        final progress = snap.bytesTransferred / snap.totalBytes;
+        setState(() => _uploadProgress = progress);
+      });
+
+      await uploadTask;
       final url = await ref.getDownloadURL();
       await widget.auth.updateProfile({'photoUrl': url});
-    } catch (e) {
+
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Зураг оруулахад алдаа гарлаа: $e'),
-          backgroundColor: AppColors.red,
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Профайл зураг шинэчлэгдлээ ✓'),
+          backgroundColor: AppColors.teal,
           behavior: SnackBarBehavior.floating,
         ));
       }
+    } on FirebaseException catch (e) {
+      if (!mounted) return;
+      final msg = switch (e.code) {
+        'unauthorized'       => 'Firebase Storage зөвшөөрөл байхгүй. Rules шалгана уу.',
+        'canceled'           => 'Upload цуцлагдлаа',
+        'storage/unauthorized' => 'Storage Rules зөвшөөрдөггүй байна',
+        _                    => 'Firebase алдаа: ${e.message}',
+      };
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(msg),
+        backgroundColor: AppColors.red,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 5),
+      ));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Алдаа: $e'),
+        backgroundColor: AppColors.red,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 5),
+      ));
     } finally {
-      if (mounted) setState(() => _uploading = false);
+      if (mounted) setState(() { _uploading = false; _uploadProgress = 0; });
     }
   }
 
@@ -164,41 +207,67 @@ class _ProfileHeaderState extends State<_ProfileHeader> {
             // Avatar with edit button
             Stack(children: [
               GestureDetector(
-                onTap: _pickAndUpload,
-                child: Container(
-                  width: 76, height: 76,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2.5),
-                    color: Colors.white.withValues(alpha: 0.2),
-                  ),
-                  child: _uploading
-                      ? const Center(
-                          child: CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2))
-                      : widget.photoUrl != null
-                          ? ClipOval(
-                              child: Image.network(
-                                widget.photoUrl!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) =>
-                                    _AvatarInitials(name: widget.name),
-                              ),
-                            )
-                          : _AvatarInitials(name: widget.name),
+                onTap: _uploading ? null : _pickAndUpload,
+                child: SizedBox(
+                  width: 80, height: 80,
+                  child: Stack(alignment: Alignment.center, children: [
+                    // Progress ring
+                    if (_uploading)
+                      SizedBox(
+                        width: 80, height: 80,
+                        child: CircularProgressIndicator(
+                          value: _uploadProgress > 0 ? _uploadProgress : null,
+                          color: Colors.white,
+                          strokeWidth: 3,
+                          backgroundColor: Colors.white.withValues(alpha: 0.3),
+                        ),
+                      ),
+                    // Avatar circle
+                    Container(
+                      width: _uploading ? 64 : 76,
+                      height: _uploading ? 64 : 76,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                            color: Colors.white,
+                            width: _uploading ? 0 : 2.5),
+                        color: Colors.white.withValues(alpha: 0.2),
+                      ),
+                      child: ClipOval(
+                        child: _uploading
+                            ? Center(
+                                child: Text(
+                                  '${(_uploadProgress * 100).toInt()}%',
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700),
+                                ),
+                              )
+                            : widget.photoUrl != null
+                                ? Image.network(
+                                    widget.photoUrl!,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) =>
+                                        _AvatarInitials(name: widget.name),
+                                  )
+                                : _AvatarInitials(name: widget.name),
+                      ),
+                    ),
+                  ]),
                 ),
               ),
+              // Edit pencil icon
               Positioned(
                 bottom: 0, right: 0,
                 child: GestureDetector(
-                  onTap: _pickAndUpload,
+                  onTap: _uploading ? null : _pickAndUpload,
                   child: Container(
                     width: 24, height: 24,
                     decoration: BoxDecoration(
                       color: Colors.white,
                       shape: BoxShape.circle,
-                      border: Border.all(
-                          color: AppColors.primary, width: 1.5),
+                      border: Border.all(color: AppColors.primary, width: 1.5),
                     ),
                     child: const Icon(Icons.edit,
                         size: 13, color: AppColors.primary),
