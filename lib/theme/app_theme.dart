@@ -55,14 +55,22 @@ class AppTheme {
     ),
     scaffoldBackgroundColor: AppColors.bg,
     textTheme: GoogleFonts.interTextTheme().copyWith(
-      displayLarge:  GoogleFonts.inter(fontSize: 28, fontWeight: FontWeight.w700, color: AppColors.textPrimary, letterSpacing: -0.5),
-      headlineMedium:GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-      titleLarge:    GoogleFonts.inter(fontSize: 17, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-      titleMedium:   GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-      bodyLarge:     GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w400, color: AppColors.textPrimary),
-      bodyMedium:    GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w400, color: AppColors.textSecondary),
-      bodySmall:     GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w400, color: AppColors.textTertiary),
-      labelSmall:    GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.textTertiary, letterSpacing: 0.5),
+      displayLarge:   GoogleFonts.inter(fontSize: 28, fontWeight: FontWeight.w700, color: AppColors.textPrimary, letterSpacing: -0.5)
+                        .copyWith(fontFamilyFallback: const ['NotoSans']),
+      headlineMedium: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w600, color: AppColors.textPrimary)
+                        .copyWith(fontFamilyFallback: const ['NotoSans']),
+      titleLarge:     GoogleFonts.inter(fontSize: 17, fontWeight: FontWeight.w600, color: AppColors.textPrimary)
+                        .copyWith(fontFamilyFallback: const ['NotoSans']),
+      titleMedium:    GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)
+                        .copyWith(fontFamilyFallback: const ['NotoSans']),
+      bodyLarge:      GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w400, color: AppColors.textPrimary)
+                        .copyWith(fontFamilyFallback: const ['NotoSans']),
+      bodyMedium:     GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w400, color: AppColors.textSecondary)
+                        .copyWith(fontFamilyFallback: const ['NotoSans']),
+      bodySmall:      GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w400, color: AppColors.textTertiary)
+                        .copyWith(fontFamilyFallback: const ['NotoSans']),
+      labelSmall:     GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.textTertiary, letterSpacing: 0.5)
+                        .copyWith(fontFamilyFallback: const ['NotoSans']),
     ),
     appBarTheme: AppBarTheme(
       backgroundColor: AppColors.white,

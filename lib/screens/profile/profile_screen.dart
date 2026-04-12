@@ -1,5 +1,4 @@
 // lib/screens/profile/profile_screen.dart
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
@@ -131,7 +130,8 @@ class _ProfileHeaderState extends State<_ProfileHeader> {
       final ref = FirebaseStorage.instance
           .ref()
           .child('avatars/$uid.jpg');
-      await ref.putFile(File(xFile.path));
+      final bytes = await xFile.readAsBytes();
+      await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
       final url = await ref.getDownloadURL();
       await widget.auth.updateProfile({'photoUrl': url});
     } catch (e) {

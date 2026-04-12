@@ -1,5 +1,6 @@
 // lib/screens/cv/cv_screen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -71,8 +72,11 @@ class _CVScreenState extends State<CVScreen> {
   // ── PDF generation ──────────────────────────────────────
   Future<pw.Document> _buildPdf() async {
     final doc  = pw.Document();
-    final font = await PdfGoogleFonts.notoSansRegular();
-    final bold = await PdfGoogleFonts.notoSansBold();
+    // Bundled NotoSans font — Монгол кирилл үсгийг бүрэн дэмждэг
+    final fontData = await rootBundle.load('assets/fonts/NotoSans-Regular.ttf');
+    final boldData = await rootBundle.load('assets/fonts/NotoSans-Bold.ttf');
+    final font = pw.Font.ttf(fontData);
+    final bold = pw.Font.ttf(boldData);
 
     final blue  = PdfColor.fromHex('#2563EB');
     final dark  = PdfColor.fromHex('#1E293B');
