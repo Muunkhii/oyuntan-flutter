@@ -1,0 +1,466 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans,system-ui,sans-serif)}
+.wrap{display:flex;flex-wrap:wrap;gap:20px;justify-content:center;padding:12px 0}
+.phone{width:300px;background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:34px;overflow:hidden;display:flex;flex-direction:column;position:relative;min-height:580px}
+.sbar{display:flex;justify-content:space-between;padding:12px 20px 0;font-size:10px;color:var(--color-text-tertiary);flex-shrink:0}
+.pg{flex:1;padding:16px 18px 72px;overflow-y:auto;display:flex;flex-direction:column;gap:0}
+.bnav{position:absolute;bottom:0;left:0;right:0;height:68px;background:var(--color-background-primary);border-top:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;justify-content:space-around;padding:0 4px 6px}
+.nb{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 10px;border:none;background:none;cursor:pointer;color:var(--color-text-tertiary);font-size:9px;border-radius:10px}
+.nb.on{color:var(--color-text-primary)}
+.ni{width:20px;height:20px}
+.lrow{display:flex;justify-content:flex-end;gap:5px;margin-bottom:14px}
+.lp{font-size:10px;padding:3px 9px;border:0.5px solid var(--color-border-secondary);border-radius:20px;cursor:pointer;background:none;color:var(--color-text-secondary)}
+.lp.on{background:var(--color-text-primary);color:var(--color-background-primary);border-color:var(--color-text-primary)}
+.seg{display:flex;background:var(--color-background-secondary);border-radius:9px;padding:2px;margin-bottom:16px}
+.sb{flex:1;padding:7px;font-size:11px;border:none;background:none;cursor:pointer;border-radius:7px;color:var(--color-text-secondary)}
+.sb.on{background:var(--color-background-primary);color:var(--color-text-primary);font-weight:500;border:0.5px solid var(--color-border-tertiary)}
+.lbl{font-size:10px;color:var(--color-text-secondary);margin:10px 0 4px}
+.lbl:first-of-type{margin-top:0}
+.inp{width:100%;padding:8px 11px;border:0.5px solid var(--color-border-secondary);border-radius:9px;font-size:12px;background:var(--color-background-primary);color:var(--color-text-primary);outline:none}
+.bp{width:100%;padding:11px;border-radius:11px;border:none;background:var(--color-text-primary);color:var(--color-background-primary);font-size:13px;font-weight:500;cursor:pointer;margin-top:14px}
+.bg{width:100%;padding:9px;border-radius:11px;border:0.5px solid var(--color-border-secondary);background:none;color:var(--color-text-secondary);font-size:12px;cursor:pointer;margin-top:7px}
+.chip-wrap{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.chip{padding:5px 10px;border:0.5px solid var(--color-border-secondary);border-radius:20px;font-size:11px;cursor:pointer;color:var(--color-text-secondary);background:none;transition:all .12s}
+.chip.on{background:var(--color-text-primary);color:var(--color-background-primary);border-color:var(--color-text-primary)}
+.slbl{font-size:10px;font-weight:500;color:var(--color-text-secondary);letter-spacing:.4px;text-transform:uppercase;margin:14px 0 8px}
+.ntag{display:inline-block;font-size:9px;padding:2px 7px;border-radius:20px;margin-bottom:3px}
+.ntag.new{background:#E1F5EE;color:#0F6E56}
+.ntag.info{background:#E6F1FB;color:#185FA5}
+.nitem{padding:10px 0;border-bottom:0.5px solid var(--color-border-tertiary)}
+.nitem:last-child{border:none}
+.ntitle{font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:2px}
+.nsub{font-size:11px;color:var(--color-text-secondary)}
+.swcard{background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:16px;padding:16px;margin-bottom:12px;position:relative}
+.av{width:44px;height:44px;border-radius:50%;background:var(--color-background-secondary);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:500;color:var(--color-text-primary);flex-shrink:0}
+.av.blue{background:#E6F1FB;color:#185FA5}
+.av.teal{background:#E1F5EE;color:#0F6E56}
+.av.coral{background:#FAECE7;color:#993C1D}
+.sc-head{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px}
+.sc-name{font-size:13px;font-weight:500;color:var(--color-text-primary)}
+.sc-sub{font-size:11px;color:var(--color-text-secondary)}
+.skill-row{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
+.skl{font-size:10px;padding:3px 7px;border-radius:14px;background:var(--color-background-secondary);color:var(--color-text-secondary);border:0.5px solid var(--color-border-tertiary)}
+.sw-btns{display:flex;gap:8px;margin-top:10px}
+.sw-pass{flex:1;padding:9px;border-radius:10px;border:0.5px solid var(--color-border-secondary);background:none;color:var(--color-text-secondary);font-size:12px;cursor:pointer}
+.sw-hire{flex:1;padding:9px;border-radius:10px;border:none;background:var(--color-text-primary);color:var(--color-background-primary);font-size:12px;font-weight:500;cursor:pointer}
+.hist-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:0.5px solid var(--color-border-tertiary)}
+.hist-item:last-child{border:none}
+.hist-info{flex:1}
+.hist-name{font-size:12px;font-weight:500;color:var(--color-text-primary)}
+.hist-meta{font-size:10px;color:var(--color-text-secondary)}
+.hist-badge{font-size:9px;padding:2px 7px;border-radius:20px;background:#E1F5EE;color:#0F6E56}
+.proc-day{display:flex;gap:8px;margin-bottom:8px}
+.proc-dot{width:8px;height:8px;border-radius:50%;background:var(--color-text-primary);margin-top:4px;flex-shrink:0}
+.proc-line{width:1px;background:var(--color-border-secondary);margin:0 3.5px}
+.proc-content{flex:1;padding-bottom:8px}
+.proc-d{font-size:11px;font-weight:500;color:var(--color-text-primary)}
+.proc-t{font-size:10px;color:var(--color-text-secondary);margin-top:2px}
+.prow{display:flex;justify-content:space-between;padding:9px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:12px}
+.prow:last-child{border:none}
+.pl{color:var(--color-text-secondary)}
+.pv{color:var(--color-text-primary);font-weight:500}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:0.5px solid var(--color-border-tertiary)}
+.toggle-row:last-child{border:none}
+.tog-lbl{font-size:12px;color:var(--color-text-primary)}
+.tog{width:36px;height:20px;border-radius:10px;background:var(--color-border-secondary);border:none;cursor:pointer;position:relative;transition:background .15s;flex-shrink:0}
+.tog.on{background:var(--color-text-primary)}
+.tog::after{content:'';position:absolute;width:14px;height:14px;border-radius:50%;background:var(--color-background-primary);top:3px;left:3px;transition:transform .15s}
+.tog.on::after{transform:translateX(16px)}
+.color-swatch{width:24px;height:24px;border-radius:50%;border:0.5px solid var(--color-border-secondary);cursor:pointer;flex-shrink:0;transition:transform .12s}
+.color-swatch.active{transform:scale(1.2);border-width:2px}
+.slabel{font-size:11px;color:var(--color-text-secondary);margin-bottom:6px}
+.sec-title{font-size:15px;font-weight:500;color:var(--color-text-primary);margin-bottom:4px}
+.sec-sub{font-size:11px;color:var(--color-text-secondary);margin-bottom:14px}
+.screen-label{font-size:10px;color:var(--color-text-tertiary);text-align:center;margin-top:8px;letter-spacing:.3px}
+.greet-time{font-size:12px;color:var(--color-text-secondary);margin-bottom:2px}
+.greet-name{font-size:18px;font-weight:500;color:var(--color-text-primary);margin-bottom:16px}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+.stat-c{background:var(--color-background-secondary);border-radius:10px;padding:10px 12px}
+.stat-n{font-size:20px;font-weight:500;color:var(--color-text-primary)}
+.stat-l{font-size:10px;color:var(--color-text-secondary);margin-top:2px}
+.post-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:12px;padding:12px;margin-bottom:10px}
+.post-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+.post-title{font-size:12px;font-weight:500;color:var(--color-text-primary)}
+.post-tag{font-size:9px;padding:2px 7px;border-radius:12px;background:#EEEDFE;color:#534AB7}
+.post-meta{font-size:10px;color:var(--color-text-secondary);margin-bottom:8px}
+.post-btn{font-size:11px;padding:6px 12px;border-radius:8px;border:0.5px solid var(--color-border-secondary);background:none;color:var(--color-text-primary);cursor:pointer}
+</style>
+
+<h2 style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Оюунтан компани UI хуудсууд</h2>
+<div class="wrap">
+
+<!-- 1. COMPANY REGISTER -->
+<div>
+<div class="phone">
+  <div class="sbar"><span>9:41</span><span>●●●</span></div>
+  <div class="pg">
+    <div class="lrow"><button class="lp on">МН</button><button class="lp">EN</button></div>
+    <div class="sec-title">Бүртгүүлэх</div>
+    <div class="sec-sub">Компани бүртгэл</div>
+    <div class="seg">
+      <button class="sb">Оюутан</button>
+      <button class="sb on">Компани</button>
+    </div>
+    <div class="lbl">Компанийн нэр</div>
+    <input class="inp" placeholder="Datacom LLC">
+    <div class="lbl">Мэдээлэл / Тайлбар</div>
+    <input class="inp" placeholder="Компанийн товч тайлбар">
+    <div class="lbl">Утасны дугаар</div>
+    <input class="inp" placeholder="+976">
+    <div class="lbl">Имэйл</div>
+    <input class="inp" type="email" placeholder="info@company.mn">
+    <div class="lbl">Ажлын чиглэл</div>
+    <input class="inp" placeholder="Мэдээллийн технологи">
+    <div class="lbl">Хайж буй мэргэжил (олон сонголт)</div>
+    <div class="chip-wrap" id="chips">
+      <button class="chip on" onclick="this.classList.toggle('on')">Програм хангамж</button>
+      <button class="chip" onclick="this.classList.toggle('on')">Дизайн</button>
+      <button class="chip on" onclick="this.classList.toggle('on')">Маркетинг</button>
+      <button class="chip" onclick="this.classList.toggle('on')">Санхүү</button>
+      <button class="chip" onclick="this.classList.toggle('on')">Эрх зүй</button>
+      <button class="chip" onclick="this.classList.toggle('on')">Эдийн засаг</button>
+    </div>
+    <button class="bp">Бүртгүүлэх</button>
+  </div>
+</div>
+<div class="screen-label">Компани бүртгэл</div>
+</div>
+
+<!-- 2. COMPANY HOME -->
+<div>
+<div class="phone">
+  <div class="sbar"><span>9:41</span><span>●●●</span></div>
+  <div class="pg">
+    <div class="lrow"><button class="lp on">МН</button><button class="lp">EN</button></div>
+    <div class="greet-time" id="gtime">Өглөөний мэнд</div>
+    <div class="greet-name">Datacom LLC</div>
+    <div class="stat-grid">
+      <div class="stat-c"><div class="stat-n">24</div><div class="stat-l">Нийт хүсэлт</div></div>
+      <div class="stat-c"><div class="stat-n">7</div><div class="stat-l">Дадлагажигч</div></div>
+      <div class="stat-c"><div class="stat-n">3</div><div class="stat-l">Freelance ажил</div></div>
+      <div class="stat-c"><div class="stat-n">12</div><div class="stat-l">Шинэ CV</div></div>
+    </div>
+    <div class="slbl">Идэвхтэй зарууд</div>
+    <div class="post-card">
+      <div class="post-head">
+        <div class="post-title">Frontend дадлага</div>
+        <div class="post-tag">Дадлага</div>
+      </div>
+      <div class="post-meta">30 хоног · 8 хүсэлт · Нийслэл</div>
+      <button class="post-btn">CV харах →</button>
+    </div>
+    <div class="post-card">
+      <div class="post-head">
+        <div class="post-title">UI дизайн freelance</div>
+        <div class="post-tag" style="background:#FAECE7;color:#993C1D">Freelance</div>
+      </div>
+      <div class="post-meta">14 хоног · 5 хүсэлт · Онлайн</div>
+      <button class="post-btn">CV харах →</button>
+    </div>
+    <button class="bg" style="margin-top:4px">+ Шинэ зар оруулах</button>
+  </div>
+  <div class="bnav">
+    <button class="nb on"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9L12 3L21 9V20H15V14H9V20H3V9Z" stroke-linecap="round" stroke-linejoin="round"/></svg>Нүүр</button>
+    <button class="nb"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" stroke-linecap="round" stroke-linejoin="round"/></svg>Мэдэгдэл</button>
+    <button class="nb"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-4 0v2" stroke-linecap="round" stroke-linejoin="round"/></svg>Дадлага</button>
+    <button class="nb"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke-linecap="round"/></svg>Профайл</button>
+  </div>
+</div>
+<div class="screen-label">Нүүр · Компани</div>
+</div>
+
+<!-- 3. POST A JOB -->
+<div>
+<div class="phone">
+  <div class="sbar"><span>9:41</span><span>●●●</span></div>
+  <div class="pg">
+    <div class="lrow"><button class="lp on">МН</button><button class="lp">EN</button></div>
+    <div class="sec-title">Зар оруулах</div>
+    <div class="sec-sub">Дадлага эсвэл freelance зар</div>
+    <div class="seg">
+      <button class="sb on">Дадлага</button>
+      <button class="sb">Freelance</button>
+    </div>
+    <div class="lbl">Ажлын нэр</div>
+    <input class="inp" placeholder="Frontend хөгжүүлэгч">
+    <div class="lbl">Дадлагийн хугацаа (хоног)</div>
+    <input class="inp" type="number" placeholder="30">
+    <div class="lbl">Байршил</div>
+    <input class="inp" placeholder="Улаанбаатар / Онлайн">
+    <div class="lbl">Тайлбар</div>
+    <textarea class="inp" rows="2" placeholder="Ажлын дэлгэрэнгүй тайлбар..." style="resize:none"></textarea>
+    <div class="lbl">Шаардлагатай мэргэжил</div>
+    <div class="chip-wrap">
+      <button class="chip on" onclick="this.classList.toggle('on')">React</button>
+      <button class="chip on" onclick="this.classList.toggle('on')">TypeScript</button>
+      <button class="chip" onclick="this.classList.toggle('on')">Node.js</button>
+      <button class="chip" onclick="this.classList.toggle('on')">Figma</button>
+    </div>
+    <div class="lbl">Цалин (₮)</div>
+    <input class="inp" placeholder="Сараар / Нэг удаа">
+    <button class="bp">Зар нийтлэх</button>
+  </div>
+</div>
+<div class="screen-label">Зар оруулах</div>
+</div>
+
+<!-- 4. NOTIFICATIONS -->
+<div>
+<div class="phone">
+  <div class="sbar"><span>9:41</span><span>●●●</span></div>
+  <div class="pg">
+    <div class="lrow"><button class="lp on">МН</button><button class="lp">EN</button></div>
+    <div class="sec-title">Мэдэгдэл</div>
+    <div style="margin-bottom:14px"></div>
+    <div class="nitem">
+      <div class="ntag new">Шинэ тохирол</div>
+      <div class="ntitle">Б.Нарантуяа · React, TypeScript</div>
+      <div class="nsub">ШУТИС · Програм хангамж · 3-р курс</div>
+    </div>
+    <div class="nitem">
+      <div class="ntag new">Шинэ тохирол</div>
+      <div class="ntitle">Э.Батбаяр · UI/UX Дизайн</div>
+      <div class="nsub">МУИС · Дизайн · 4-р курс</div>
+    </div>
+    <div class="nitem">
+      <div class="ntag info">CV ирсэн</div>
+      <div class="ntitle">Г.Энхмандах таны зарт хүсэлт илгээлээ</div>
+      <div class="nsub">Frontend дадлага · 2 цагийн өмнө</div>
+    </div>
+    <div class="nitem">
+      <div class="ntag info">Дадлага</div>
+      <div class="ntitle">Д.Мөнхбат дадлага дуусгалаа</div>
+      <div class="nsub">30 хоногийн дадлага · Амжилттай</div>
+    </div>
+    <div class="nitem">
+      <div class="ntag new">Шинэ тохирол</div>
+      <div class="ntitle">О.Сарнай · Маркетинг, SMM</div>
+      <div class="nsub">УБТДС · Маркетинг · 2-р курс</div>
+    </div>
+    <div class="nitem">
+      <div class="ntag info">Freelance</div>
+      <div class="ntitle">UI зарт 3 шинэ хүсэлт ирлээ</div>
+      <div class="nsub">UI дизайн freelance · өчигдөр</div>
+    </div>
+  </div>
+  <div class="bnav">
+    <button class="nb"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9L12 3L21 9V20H15V14H9V20H3V9Z" stroke-linecap="round" stroke-linejoin="round"/></svg>Нүүр</button>
+    <button class="nb on"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" stroke-linecap="round" stroke-linejoin="round"/></svg>Мэдэгдэл</button>
+    <button class="nb"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-4 0v2" stroke-linecap="round" stroke-linejoin="round"/></svg>Дадлага</button>
+    <button class="nb"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke-linecap="round"/></svg>Профайл</button>
+  </div>
+</div>
+<div class="screen-label">Мэдэгдэл · Компани</div>
+</div>
+
+<!-- 5. SWIPE CV -->
+<div>
+<div class="phone">
+  <div class="sbar"><span>9:41</span><span>●●●</span></div>
+  <div class="pg">
+    <div class="lrow"><button class="lp on">МН</button><button class="lp">EN</button></div>
+    <div class="sec-title">CV хайх</div>
+    <div class="sec-sub" style="margin-bottom:14px">Frontend дадлага зарт тохирох оюутан</div>
+
+    <div class="swcard" id="sw1">
+      <div class="sc-head">
+        <div class="av blue">БН</div>
+        <div>
+          <div class="sc-name">Б.Нарантуяа</div>
+          <div class="sc-sub">ШУТИС · Програм хангамж · 3-р курс</div>
+        </div>
+      </div>
+      <div class="skill-row">
+        <span class="skl">React</span><span class="skl">TypeScript</span><span class="skl">Git</span><span class="skl">Figma</span>
+      </div>
+      <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:10px;line-height:1.5">ДНД 3.8 · Ангийн тэргүүн · "Вэб хөгжүүлэлт" курс дүүргэсэн. Бага хугацааны дадлага хийх боломжтой.</div>
+      <div style="font-size:10px;color:var(--color-text-tertiary);margin-bottom:8px">Сэтгэлзүйн тест: Хариуцлагатай · Бүтээлч · Багаар ажиллах дуртай</div>
+      <div class="sw-btns">
+        <button class="sw-pass" onclick="document.getElementById('sw1').style.opacity='0.3'">Үгүй</button>
+        <button class="sw-hire" onclick="document.getElementById('sw1').style.opacity='0.3'">Урих ✓</button>
+      </div>
+    </div>
+
+    <div class="swcard">
+      <div class="sc-head">
+        <div class="av teal">ЭБ</div>
+        <div>
+          <div class="sc-name">Э.Батбаяр</div>
+          <div class="sc-sub">МУИС · Дизайн · 4-р курс</div>
+        </div>
+      </div>
+      <div class="skill-row">
+        <span class="skl">Figma</span><span class="skl">Adobe XD</span><span class="skl">HTML/CSS</span>
+      </div>
+      <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:10px;line-height:1.5">ДНД 3.5 · Дизайны уралдаанд оролцсон туршлагатай. 2 freelance ажил хийсэн.</div>
+      <div style="font-size:10px;color:var(--color-text-tertiary);margin-bottom:8px">Сэтгэлзүйн тест: Бүтээлч · Анхааралтай · Хурдан суралцдаг</div>
+      <div class="sw-btns">
+        <button class="sw-pass">Үгүй</button>
+        <button class="sw-hire">Урих ✓</button>
+      </div>
+    </div>
+  </div>
+  <div class="bnav">
+    <button class="nb"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9L12 3L21 9V20H15V14H9V20H3V9Z" stroke-linecap="round" stroke-linejoin="round"/></svg>Нүүр</button>
+    <button class="nb"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" stroke-linecap="round" stroke-linejoin="round"/></svg>Мэдэгдэл</button>
+    <button class="nb on"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-4 0v2" stroke-linecap="round" stroke-linejoin="round"/></svg>Дадлага</button>
+    <button class="nb"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke-linecap="round"/></svg>Профайл</button>
+  </div>
+</div>
+<div class="screen-label">Дадлага · CV Swipe</div>
+</div>
+
+<!-- 6. INTERN PROGRESS -->
+<div>
+<div class="phone">
+  <div class="sbar"><span>9:41</span><span>●●●</span></div>
+  <div class="pg">
+    <div class="lrow"><button class="lp on">МН</button><button class="lp">EN</button></div>
+    <div class="sec-title">Дадлагажигчид</div>
+    <div class="slbl" style="margin-top:4px">Одоо дадлага хийж байгаа</div>
+    <div class="hist-item">
+      <div class="av blue" style="width:36px;height:36px;font-size:12px">БН</div>
+      <div class="hist-info">
+        <div class="hist-name">Б.Нарантуяа</div>
+        <div class="hist-meta">12/30 хоног · Frontend</div>
+      </div>
+      <button onclick="showProc()" style="font-size:10px;padding:4px 9px;border-radius:8px;border:0.5px solid var(--color-border-secondary);background:none;cursor:pointer;color:var(--color-text-primary)">Дэлгэрэнгүй</button>
+    </div>
+    <div class="hist-item">
+      <div class="av teal" style="width:36px;height:36px;font-size:12px">ГЭ</div>
+      <div class="hist-info">
+        <div class="hist-name">Г.Энхмандах</div>
+        <div class="hist-meta">5/30 хоног · React</div>
+      </div>
+      <button style="font-size:10px;padding:4px 9px;border-radius:8px;border:0.5px solid var(--color-border-secondary);background:none;cursor:pointer;color:var(--color-text-primary)">Дэлгэрэнгүй</button>
+    </div>
+
+    <div id="procbox" style="display:none;background:var(--color-background-secondary);border-radius:12px;padding:12px;margin-top:10px">
+      <div style="font-size:12px;font-weight:500;margin-bottom:10px;color:var(--color-text-primary)">Б.Нарантуяа — 30 хоногийн дадлага</div>
+      <div style="display:flex;gap:0">
+        <div style="display:flex;flex-direction:column;align-items:center;margin-right:10px">
+          <div class="proc-dot"></div>
+          <div class="proc-line" style="flex:1"></div>
+          <div class="proc-dot"></div>
+          <div class="proc-line" style="flex:1"></div>
+          <div class="proc-dot" style="background:var(--color-border-secondary)"></div>
+        </div>
+        <div style="flex:1">
+          <div class="proc-content">
+            <div class="proc-d">1-р өдөр</div>
+            <div class="proc-t">Git workflow, кодын стандарт суралцсан</div>
+          </div>
+          <div class="proc-content">
+            <div class="proc-d">5-р өдөр</div>
+            <div class="proc-t">Эхний component бичиж дуусгасан</div>
+          </div>
+          <div class="proc-content">
+            <div class="proc-d">12-р өдөр (одоо)</div>
+            <div class="proc-t">API интеграцийг хийж эхэлсэн</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="slbl" style="margin-top:16px">Дадлага дууссан (түүх)</div>
+    <div class="hist-item">
+      <div class="av coral" style="width:36px;height:36px;font-size:12px">ДМ</div>
+      <div class="hist-info">
+        <div class="hist-name">Д.Мөнхбат</div>
+        <div class="hist-meta">30/30 хоног · Амжилттай</div>
+      </div>
+      <div class="hist-badge">Дууссан</div>
+    </div>
+    <div class="hist-item">
+      <div class="av" style="width:36px;height:36px;font-size:12px;background:#FBEAF0;color:#993556">ОС</div>
+      <div class="hist-info">
+        <div class="hist-name">О.Сарнай</div>
+        <div class="hist-meta">14/14 хоног · Freelance</div>
+      </div>
+      <div class="hist-badge">Дууссан</div>
+    </div>
+  </div>
+  <div class="bnav">
+    <button class="nb"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9L12 3L21 9V20H15V14H9V20H3V9Z" stroke-linecap="round" stroke-linejoin="round"/></svg>Нүүр</button>
+    <button class="nb"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" stroke-linecap="round" stroke-linejoin="round"/></svg>Мэдэгдэл</button>
+    <button class="nb on"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-4 0v2" stroke-linecap="round" stroke-linejoin="round"/></svg>Дадлага</button>
+    <button class="nb"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke-linecap="round"/></svg>Профайл</button>
+  </div>
+</div>
+<div class="screen-label">Дадлага · Progress</div>
+</div>
+
+<!-- 7. PROFILE + SETTINGS -->
+<div>
+<div class="phone">
+  <div class="sbar"><span>9:41</span><span>●●●</span></div>
+  <div class="pg">
+    <div class="lrow"><button class="lp on">МН</button><button class="lp">EN</button></div>
+    <div style="display:flex;flex-direction:column;align-items:center;padding:8px 0 16px">
+      <div style="width:52px;height:52px;border-radius:50%;background:var(--color-background-secondary);border:0.5px solid var(--color-border-secondary);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:500;color:var(--color-text-primary);margin-bottom:8px">DC</div>
+      <div style="font-size:15px;font-weight:500;color:var(--color-text-primary)">Datacom LLC</div>
+      <div style="font-size:11px;color:var(--color-text-secondary)">Мэдээллийн технологи</div>
+    </div>
+
+    <div class="slbl">Апп өнгө</div>
+    <div style="display:flex;gap:10px;margin-bottom:16px;align-items:center">
+      <div class="color-swatch active" style="background:#1a1a1a" onclick="setAccent('#1a1a1a',this)"></div>
+      <div class="color-swatch" style="background:#534AB7" onclick="setAccent('#534AB7',this)"></div>
+      <div class="color-swatch" style="background:#1D9E75" onclick="setAccent('#1D9E75',this)"></div>
+      <div class="color-swatch" style="background:#D85A30" onclick="setAccent('#D85A30',this)"></div>
+      <div class="color-swatch" style="background:#185FA5" onclick="setAccent('#185FA5',this)"></div>
+      <div style="font-size:10px;color:var(--color-text-tertiary);margin-left:4px" id="clbl">Хар (одоо)</div>
+    </div>
+
+    <div class="slbl">Тохиргоо</div>
+    <div class="toggle-row">
+      <span class="tog-lbl">Харанхуй горим</span>
+      <button class="tog" id="dm" onclick="this.classList.toggle('on')"></button>
+    </div>
+    <div class="toggle-row">
+      <span class="tog-lbl">Push мэдэгдэл</span>
+      <button class="tog on" onclick="this.classList.toggle('on')"></button>
+    </div>
+    <div class="toggle-row">
+      <span class="tog-lbl">Имэйл мэдэгдэл</span>
+      <button class="tog on" onclick="this.classList.toggle('on')"></button>
+    </div>
+
+    <div class="slbl" style="margin-top:8px">Бүртгэл</div>
+    <div class="prow"><span class="pl">Нууц үг солих</span><span style="color:var(--color-text-tertiary)">›</span></div>
+    <div class="prow"><span class="pl">Профайл засварлах</span><span style="color:var(--color-text-tertiary)">›</span></div>
+    <div class="prow"><span class="pl">Тусламж</span><span style="color:var(--color-text-tertiary)">›</span></div>
+    <div class="prow" style="border:none"><span style="color:var(--color-text-danger);font-size:12px">Гарах</span><span style="color:var(--color-text-tertiary)">›</span></div>
+  </div>
+  <div class="bnav">
+    <button class="nb"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9L12 3L21 9V20H15V14H9V20H3V9Z" stroke-linecap="round" stroke-linejoin="round"/></svg>Нүүр</button>
+    <button class="nb"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" stroke-linecap="round" stroke-linejoin="round"/></svg>Мэдэгдэл</button>
+    <button class="nb"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-4 0v2" stroke-linecap="round" stroke-linejoin="round"/></svg>Дадлага</button>
+    <button class="nb on"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke-linecap="round"/></svg>Профайл</button>
+  </div>
+</div>
+<div class="screen-label">Профайл · Тохиргоо</div>
+</div>
+
+</div>
+
+<script>
+const names = {
+  '#1a1a1a':'Хар','#534AB7':'Нил','#1D9E75':'Ногоон','#D85A30':'Улаан','#185FA5':'Цэнхэр'
+};
+function setAccent(c, el){
+  document.querySelectorAll('.color-swatch').forEach(s=>s.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('clbl').textContent = (names[c]||'') + ' (одоо)';
+}
+function showProc(){
+  var b = document.getElementById('procbox');
+  b.style.display = b.style.display==='none'?'block':'none';
+}
+const h = new Date().getHours();
+const gt = h<12?'Өглөөний мэнд':h<17?'Өдрийн мэнд':'Оройн мэнд';
+const el = document.getElementById('gtime');
+if(el) el.textContent = gt;
+</script>

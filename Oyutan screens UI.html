@@ -1,0 +1,349 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.phone{width:320px;min-height:620px;background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:36px;overflow:hidden;display:flex;flex-direction:column;position:relative}
+.screen{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.page{display:none;flex-direction:column;flex:1;padding:28px 24px 80px}
+.page.active{display:flex}
+.status-bar{display:flex;justify-content:space-between;align-items:center;padding:14px 24px 0;font-size:11px;color:var(--color-text-tertiary);flex-shrink:0}
+.bottom-nav{position:absolute;bottom:0;left:0;right:0;height:72px;background:var(--color-background-primary);border-top:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;justify-content:space-around;padding:0 8px 8px}
+.nav-btn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 12px;border:none;background:none;cursor:pointer;color:var(--color-text-tertiary);font-size:10px;border-radius:12px;transition:color .15s}
+.nav-btn.active{color:var(--color-text-primary)}
+.nav-icon{width:22px;height:22px}
+.lang-row{display:flex;justify-content:flex-end;gap:6px;margin-bottom:20px}
+.lang-pill{font-size:11px;padding:4px 10px;border:0.5px solid var(--color-border-secondary);border-radius:20px;cursor:pointer;background:none;color:var(--color-text-secondary);transition:all .15s}
+.lang-pill.active{background:var(--color-text-primary);color:var(--color-background-primary);border-color:var(--color-text-primary)}
+.logo{font-size:22px;font-weight:500;color:var(--color-text-primary);letter-spacing:-0.5px;margin-bottom:4px}
+.sub{font-size:13px;color:var(--color-text-secondary);margin-bottom:32px}
+.seg{display:flex;background:var(--color-background-secondary);border-radius:10px;padding:3px;margin-bottom:24px}
+.seg-btn{flex:1;padding:8px;font-size:12px;border:none;background:none;cursor:pointer;border-radius:8px;color:var(--color-text-secondary);transition:all .15s}
+.seg-btn.active{background:var(--color-background-primary);color:var(--color-text-primary);font-weight:500;border:0.5px solid var(--color-border-tertiary)}
+.field-lbl{font-size:11px;color:var(--color-text-secondary);margin-bottom:5px;margin-top:12px}
+.field-lbl:first-of-type{margin-top:0}
+.inp{width:100%;padding:9px 12px;border:0.5px solid var(--color-border-secondary);border-radius:10px;font-size:13px;background:var(--color-background-primary);color:var(--color-text-primary);outline:none}
+.inp:focus{border-color:var(--color-border-primary)}
+.btn-primary{width:100%;padding:12px;border-radius:12px;border:none;background:var(--color-text-primary);color:var(--color-background-primary);font-size:14px;font-weight:500;cursor:pointer;margin-top:20px;transition:opacity .15s}
+.btn-primary:active{opacity:.8}
+.btn-ghost{width:100%;padding:10px;border-radius:12px;border:0.5px solid var(--color-border-secondary);background:none;color:var(--color-text-secondary);font-size:13px;cursor:pointer;margin-top:8px}
+.greeting{font-size:18px;font-weight:500;margin-bottom:2px}
+.greeting-sub{font-size:13px;color:var(--color-text-secondary);margin-bottom:20px}
+.cal-strip{display:flex;gap:6px;margin-bottom:20px;overflow:hidden}
+.cal-day{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 0;border-radius:10px}
+.cal-day.today{background:var(--color-text-primary)}
+.cal-d{font-size:10px;color:var(--color-text-tertiary)}
+.cal-n{font-size:14px;font-weight:500;color:var(--color-text-primary)}
+.cal-day.today .cal-d{color:var(--color-background-secondary)}
+.cal-day.today .cal-n{color:var(--color-background-primary)}
+.banner-track{display:flex;gap:10px;margin-bottom:20px;overflow:hidden}
+.banner-card{flex-shrink:0;width:200px;padding:12px;background:var(--color-background-secondary);border-radius:12px;border:0.5px solid var(--color-border-tertiary)}
+.banner-tag{font-size:10px;color:var(--color-text-tertiary);margin-bottom:4px}
+.banner-title{font-size:13px;font-weight:500;color:var(--color-text-primary)}
+.section-lbl{font-size:11px;font-weight:500;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
+.news-item{padding:12px 0;border-bottom:0.5px solid var(--color-border-tertiary);display:flex;flex-direction:column;gap:3px}
+.news-item:last-child{border:none}
+.news-tag{font-size:10px;color:var(--color-text-tertiary)}
+.news-title{font-size:13px;font-weight:500;color:var(--color-text-primary)}
+.chatbot-box{background:var(--color-background-secondary);border-radius:14px;padding:14px;margin-top:16px}
+.chat-bubble{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:12px 12px 12px 2px;padding:10px 12px;font-size:13px;color:var(--color-text-primary);margin-bottom:8px;display:inline-block}
+.chat-input-row{display:flex;gap:8px}
+.chat-input-row .inp{flex:1;padding:8px 12px;font-size:12px}
+.send-btn{width:32px;height:36px;border-radius:10px;background:var(--color-text-primary);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.internship-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:14px;padding:14px;margin-bottom:10px}
+.ic-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+.ic-name{font-size:14px;font-weight:500;color:var(--color-text-primary)}
+.ic-tag{font-size:10px;padding:3px 8px;border-radius:20px;background:var(--color-background-secondary);color:var(--color-text-secondary);border:0.5px solid var(--color-border-tertiary)}
+.stars{display:flex;gap:2px;margin-bottom:6px}
+.star{width:12px;height:12px;fill:var(--color-text-secondary)}
+.star.lit{fill:#EF9F27}
+.ic-desc{font-size:12px;color:var(--color-text-secondary);margin-bottom:8px}
+.ic-comment{font-size:11px;color:var(--color-text-tertiary);padding:8px;background:var(--color-background-secondary);border-radius:8px}
+.free-pill{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border:0.5px solid var(--color-border-secondary);border-radius:10px;font-size:12px;cursor:pointer;margin:0 6px 8px 0;background:none;color:var(--color-text-primary)}
+.profile-avatar{width:60px;height:60px;border-radius:50%;background:var(--color-background-secondary);border:0.5px solid var(--color-border-secondary);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:500;color:var(--color-text-primary);margin-bottom:12px}
+.profile-name{font-size:17px;font-weight:500;margin-bottom:2px}
+.profile-sub{font-size:13px;color:var(--color-text-secondary);margin-bottom:20px}
+.prow{display:flex;justify-content:space-between;padding:10px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:13px}
+.prow-lbl{color:var(--color-text-secondary)}
+.prow-val{color:var(--color-text-primary);font-weight:500}
+.help-item{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:13px;cursor:pointer;color:var(--color-text-primary)}
+.scroll-hint{font-size:11px;color:var(--color-text-tertiary);text-align:center;margin-top:8px}
+.wrapper{display:flex;flex-wrap:wrap;gap:24px;justify-content:center;padding:16px 0}
+.screen-label{font-size:11px;color:var(--color-text-tertiary);text-align:center;margin-top:10px;letter-spacing:.3px}
+</style>
+
+<h2 style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Оюунтан апп UI хуудсуудын жишээ</h2>
+
+<div class="wrapper">
+
+<!-- PHONE 1: LOGIN -->
+<div>
+<div class="phone">
+  <div class="status-bar"><span>9:41</span><span>●●●</span></div>
+  <div class="screen">
+    <div class="page active" style="padding-top:20px">
+      <div class="lang-row">
+        <button class="lang-pill active">МН</button>
+        <button class="lang-pill">EN</button>
+      </div>
+      <div style="margin-bottom:40px">
+        <div class="logo">Оюунтан</div>
+        <div class="sub">Карьерын гарааны платформ</div>
+      </div>
+      <div class="seg">
+        <button class="seg-btn active">Оюутан</button>
+        <button class="seg-btn">Компани</button>
+      </div>
+      <div class="field-lbl">Имэйл</div>
+      <input class="inp" type="email" placeholder="name@example.com">
+      <div class="field-lbl">Нууц үг</div>
+      <input class="inp" type="password" placeholder="••••••••">
+      <button class="btn-primary">Нэвтрэх</button>
+      <button class="btn-ghost">Бүртгүүлэх</button>
+      <div style="margin-top:16px;text-align:center">
+        <span style="font-size:12px;color:var(--color-text-tertiary);text-decoration:underline;cursor:pointer">Нэвтрэлтийн тусламж</span>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="screen-label">Нэвтрэх</div>
+</div>
+
+<!-- PHONE 2: REGISTER STUDENT -->
+<div>
+<div class="phone">
+  <div class="status-bar"><span>9:41</span><span>●●●</span></div>
+  <div class="screen">
+    <div class="page active" style="padding-top:16px;overflow-y:auto">
+      <div class="lang-row">
+        <button class="lang-pill active">МН</button>
+        <button class="lang-pill">EN</button>
+      </div>
+      <div style="font-size:17px;font-weight:500;margin-bottom:4px">Бүртгүүлэх</div>
+      <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:16px">Оюутан бүртгэл</div>
+      <div class="seg">
+        <button class="seg-btn active">Оюутан</button>
+        <button class="seg-btn">Компани</button>
+      </div>
+      <div class="field-lbl">Нэр</div>
+      <input class="inp" placeholder="Бүтэн нэр">
+      <div class="field-lbl">Төрсөн огноо</div>
+      <input class="inp" type="date">
+      <div class="field-lbl">Утасны дугаар</div>
+      <input class="inp" placeholder="+976">
+      <div class="field-lbl">Улс</div>
+      <input class="inp" placeholder="Монгол">
+      <div class="field-lbl">Имэйл</div>
+      <input class="inp" type="email" placeholder="name@example.com">
+      <div class="field-lbl">Сургууль</div>
+      <input class="inp" placeholder="МУИС, ШУТИС...">
+      <div class="field-lbl">Мэргэжил</div>
+      <input class="inp" placeholder="Програм хангамж...">
+      <button class="btn-primary" style="margin-top:16px">Бүртгүүлэх →</button>
+      <div class="scroll-hint">дараа нь 10 сэтгэлзүйн асуулт</div>
+    </div>
+  </div>
+</div>
+<div class="screen-label">Бүртгэл · Оюутан</div>
+</div>
+
+<!-- PHONE 3: HOME -->
+<div>
+<div class="phone">
+  <div class="status-bar"><span>9:41</span><span>●●●</span></div>
+  <div class="screen">
+    <div class="page active" style="padding-top:16px;overflow-y:auto">
+      <div class="lang-row">
+        <button class="lang-pill active">МН</button>
+        <button class="lang-pill">EN</button>
+      </div>
+      <div class="greeting">Сайн байна уу, Болд</div>
+      <div class="greeting-sub">2025 оны 7-р сарын 3, Пүрэв</div>
+      <div class="cal-strip">
+        <div class="cal-day"><div class="cal-d">Д</div><div class="cal-n">30</div></div>
+        <div class="cal-day"><div class="cal-d">М</div><div class="cal-n">1</div></div>
+        <div class="cal-day"><div class="cal-d">Л</div><div class="cal-n">2</div></div>
+        <div class="cal-day today"><div class="cal-d">П</div><div class="cal-n">3</div></div>
+        <div class="cal-day"><div class="cal-d">Б</div><div class="cal-n">4</div></div>
+        <div class="cal-day"><div class="cal-d">Б</div><div class="cal-n">5</div></div>
+        <div class="cal-day"><div class="cal-d">Н</div><div class="cal-n">6</div></div>
+      </div>
+      <div class="section-lbl">Спонсор</div>
+      <div class="banner-track">
+        <div class="banner-card"><div class="banner-tag">Шинэ</div><div class="banner-title">Datacom дадлага 2025</div></div>
+        <div class="banner-card"><div class="banner-tag">Хугацаа дуусах</div><div class="banner-title">Мон Фудс зар</div></div>
+      </div>
+      <div class="section-lbl">Өнөөдрийн мэдээ</div>
+      <div class="news-item">
+        <div class="news-tag">Технологи</div>
+        <div class="news-title">AI дадлагын байр нэмэгдлээ</div>
+      </div>
+      <div class="news-item">
+        <div class="news-tag">Програм хангамж</div>
+        <div class="news-title">React 19 гарлаа</div>
+      </div>
+      <div class="chatbot-box">
+        <div class="chat-bubble">Өнөөдөр хэр байв? 🙂</div>
+        <div class="chat-input-row">
+          <input class="inp" placeholder="Хариулт бичих...">
+          <button class="send-btn">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 8L14 2L8 14L7 9L2 8Z" fill="var(--color-background-primary)" stroke="var(--color-background-primary)" stroke-width="1" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="bottom-nav">
+    <button class="nav-btn active" onclick="void(0)">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9L12 3L21 9V20H15V14H9V20H3V9Z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Нүүр
+    </button>
+    <button class="nav-btn" onclick="void(0)">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Мэдэгдэл
+    </button>
+    <button class="nav-btn" onclick="void(0)">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-4 0v2M12 12v4M10 14h4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Дадлага
+    </button>
+    <button class="nav-btn" onclick="void(0)">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke-linecap="round"/></svg>
+      Профайл
+    </button>
+  </div>
+</div>
+<div class="screen-label">Нүүр хуудас</div>
+</div>
+
+<!-- PHONE 4: INTERNSHIPS -->
+<div>
+<div class="phone">
+  <div class="status-bar"><span>9:41</span><span>●●●</span></div>
+  <div class="screen">
+    <div class="page active" style="padding-top:16px;overflow-y:auto">
+      <div class="lang-row">
+        <button class="lang-pill active">МН</button>
+        <button class="lang-pill">EN</button>
+      </div>
+      <div style="font-size:17px;font-weight:500;margin-bottom:16px">Дадлагийн зар</div>
+      <div class="seg" style="margin-bottom:16px">
+        <button class="seg-btn active">Компани</button>
+        <button class="seg-btn">Freelance</button>
+      </div>
+      <div class="internship-card">
+        <div class="ic-header">
+          <div class="ic-name">Datacom LLC</div>
+          <div class="ic-tag">IT · Дадлага</div>
+        </div>
+        <div class="stars">
+          <svg class="star lit" viewBox="0 0 12 12"><path d="M6 1l1.5 3h3l-2.5 2 1 3L6 7.5 3 9l1-3L1.5 4h3z"/></svg>
+          <svg class="star lit" viewBox="0 0 12 12"><path d="M6 1l1.5 3h3l-2.5 2 1 3L6 7.5 3 9l1-3L1.5 4h3z"/></svg>
+          <svg class="star lit" viewBox="0 0 12 12"><path d="M6 1l1.5 3h3l-2.5 2 1 3L6 7.5 3 9l1-3L1.5 4h3z"/></svg>
+          <svg class="star lit" viewBox="0 0 12 12"><path d="M6 1l1.5 3h3l-2.5 2 1 3L6 7.5 3 9l1-3L1.5 4h3z"/></svg>
+          <svg class="star" viewBox="0 0 12 12"><path d="M6 1l1.5 3h3l-2.5 2 1 3L6 7.5 3 9l1-3L1.5 4h3z"/></svg>
+          <span style="font-size:11px;color:var(--color-text-secondary);margin-left:4px">4.0</span>
+        </div>
+        <div class="ic-desc">Frontend хөгжүүлэгч дадлагажигч авна. 3 сар. Цалинтай.</div>
+        <div class="ic-comment">"Маш сайн орчин, зааж сургадаг" — Б.Нарантуяа</div>
+      </div>
+      <div class="internship-card">
+        <div class="ic-header">
+          <div class="ic-name">Mobicom</div>
+          <div class="ic-tag">Харилцаа холбоо</div>
+        </div>
+        <div class="stars">
+          <svg class="star lit" viewBox="0 0 12 12"><path d="M6 1l1.5 3h3l-2.5 2 1 3L6 7.5 3 9l1-3L1.5 4h3z"/></svg>
+          <svg class="star lit" viewBox="0 0 12 12"><path d="M6 1l1.5 3h3l-2.5 2 1 3L6 7.5 3 9l1-3L1.5 4h3z"/></svg>
+          <svg class="star lit" viewBox="0 0 12 12"><path d="M6 1l1.5 3h3l-2.5 2 1 3L6 7.5 3 9l1-3L1.5 4h3z"/></svg>
+          <svg class="star lit" viewBox="0 0 12 12"><path d="M6 1l1.5 3h3l-2.5 2 1 3L6 7.5 3 9l1-3L1.5 4h3z"/></svg>
+          <svg class="star lit" viewBox="0 0 12 12"><path d="M6 1l1.5 3h3l-2.5 2 1 3L6 7.5 3 9l1-3L1.5 4h3z"/></svg>
+          <span style="font-size:11px;color:var(--color-text-secondary);margin-left:4px">5.0</span>
+        </div>
+        <div class="ic-desc">Маркетинг, ажлын туршлага олгодог. 2 сар. Нийслэлд.</div>
+        <div class="ic-comment">"Хариуцлага өгдөг, үнэхээр туршлага авна" — Э.Батбаяр</div>
+      </div>
+      <div style="font-size:13px;font-weight:500;margin:8px 0 12px">Freelance</div>
+      <div style="flex-wrap:wrap;display:flex">
+        <button class="free-pill">Орчуулга</button>
+        <button class="free-pill">Дизайн</button>
+        <button class="free-pill">Код бичих</button>
+        <button class="free-pill">Бичих</button>
+        <button class="free-pill">Видео</button>
+      </div>
+    </div>
+  </div>
+  <div class="bottom-nav">
+    <button class="nav-btn">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9L12 3L21 9V20H15V14H9V20H3V9Z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Нүүр
+    </button>
+    <button class="nav-btn">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Мэдэгдэл
+    </button>
+    <button class="nav-btn active">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-4 0v2M12 12v4M10 14h4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Дадлага
+    </button>
+    <button class="nav-btn">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke-linecap="round"/></svg>
+      Профайл
+    </button>
+  </div>
+</div>
+<div class="screen-label">Дадлагийн зар</div>
+</div>
+
+<!-- PHONE 5: PROFILE -->
+<div>
+<div class="phone">
+  <div class="status-bar"><span>9:41</span><span>●●●</span></div>
+  <div class="screen">
+    <div class="page active" style="padding-top:16px;overflow-y:auto">
+      <div class="lang-row">
+        <button class="lang-pill active">МН</button>
+        <button class="lang-pill">EN</button>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:8px 0 20px">
+        <div class="profile-avatar">БТ</div>
+        <div class="profile-name">Болд Төмөр</div>
+        <div class="profile-sub">ШУТИС · Програм хангамж</div>
+      </div>
+      <div style="padding:0 0 16px;border-bottom:0.5px solid var(--color-border-tertiary);margin-bottom:16px">
+        <div class="prow"><span class="prow-lbl">Утас</span><span class="prow-val">+976 9911 2233</span></div>
+        <div class="prow"><span class="prow-lbl">Имэйл</span><span class="prow-val">bold@example.mn</span></div>
+        <div class="prow"><span class="prow-lbl">Улс</span><span class="prow-val">Монгол</span></div>
+        <div class="prow" style="border:none"><span class="prow-lbl">Курс</span><span class="prow-val">3-р курс</span></div>
+      </div>
+      <div style="font-size:13px;font-weight:500;margin-bottom:12px">Тусламж</div>
+      <div class="help-item">Нэвтрэлтийн тусламж <span style="color:var(--color-text-tertiary)">›</span></div>
+      <div class="help-item">Профайл засварлах <span style="color:var(--color-text-tertiary)">›</span></div>
+      <div class="help-item">Нууц үг солих <span style="color:var(--color-text-tertiary)">›</span></div>
+      <div class="help-item" style="border:none;color:var(--color-text-danger)">Гарах <span style="color:var(--color-text-tertiary)">›</span></div>
+    </div>
+  </div>
+  <div class="bottom-nav">
+    <button class="nav-btn">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9L12 3L21 9V20H15V14H9V20H3V9Z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Нүүр
+    </button>
+    <button class="nav-btn">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Мэдэгдэл
+    </button>
+    <button class="nav-btn">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-4 0v2M12 12v4M10 14h4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Дадлага
+    </button>
+    <button class="nav-btn active">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke-linecap="round"/></svg>
+      Профайл
+    </button>
+  </div>
+</div>
+<div class="screen-label">Профайл</div>
+</div>
+
+</div>
+
+<div style="text-align:center;padding:8px 0 4px">
+  <button onclick="sendPrompt('Компани бүртгэлийн UI хуудас нэмж өгөөч')" style="font-size:12px;padding:8px 18px;border:0.5px solid var(--color-border-secondary);border-radius:20px;background:none;color:var(--color-text-secondary);cursor:pointer">Компани бүртгэл нэмэх ↗</button>
+</div>
