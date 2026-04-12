@@ -19,6 +19,8 @@ import 'screens/diary/diary_screen.dart';
 import 'screens/review/review_screen.dart';
 import 'screens/profile/profile_screen.dart';
 import 'screens/notifications/notification_screen.dart';
+import 'screens/cv/cv_screen.dart';
+import 'screens/settings/settings_screen.dart';
 import 'screens/main_shell.dart';
 
 void main() async {
@@ -69,7 +71,7 @@ class OyuntanApp extends StatelessWidget {
 
       // ── Оюутан Shell (bottom nav: 4 items) ───────────────
       ShellRoute(
-        builder: (_, __, child) => MainShell(child: child, isCompany: false),
+        builder: (_, __, child) => MainShell(isCompany: false, child: child),
         routes: [
           GoRoute(path: '/home',          builder: (_, __) => const HomeScreen()),
           GoRoute(path: '/notifications', builder: (_, __) => const NotificationScreen()),
@@ -80,7 +82,7 @@ class OyuntanApp extends StatelessWidget {
 
       // ── Компани Shell (bottom nav: 4 items) ──────────────
       ShellRoute(
-        builder: (_, __, child) => MainShell(child: child, isCompany: true),
+        builder: (_, __, child) => MainShell(isCompany: true, child: child),
         routes: [
           GoRoute(path: '/company',                 builder: (_, __) => const CompanyHomeScreen()),
           GoRoute(path: '/company/notifications',   builder: (_, __) => const NotificationScreen()),
@@ -90,6 +92,8 @@ class OyuntanApp extends StatelessWidget {
       ),
 
       // ── Standalone ────────────────────────────────────────
+      GoRoute(path: '/cv',       builder: (_, __) => const CVScreen()),
+      GoRoute(path: '/settings', builder: (_, __) => const SettingsScreen()),
       GoRoute(path: '/company/swipe/:postId',
           builder: (_, s) => SwipeScreen(postId: s.pathParameters['postId']!)),
       GoRoute(path: '/diary/:internshipId',

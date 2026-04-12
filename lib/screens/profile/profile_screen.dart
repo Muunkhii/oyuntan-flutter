@@ -1,11 +1,14 @@
 // lib/screens/profile/profile_screen.dart
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import '../../theme/app_theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/firebase_service.dart';
+import '../../widgets/home_widgets.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -13,28 +16,20 @@ class ProfileScreen extends StatefulWidget {
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
-  bool _pushEnabled  = true;
-  bool _emailEnabled = true;
+class _ProfileScreenState extends State<ProfileScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tab;
 
   @override
   void initState() {
     super.initState();
-    _loadPrefs();
+    _tab = TabController(length: 2, vsync: this);
   }
 
-  Future<void> _loadPrefs() async {
-    final p = await SharedPreferences.getInstance();
-    setState(() {
-      _pushEnabled  = p.getBool('push_notif')  ?? true;
-      _emailEnabled = p.getBool('email_notif') ?? true;
-    });
-  }
-
-  Future<void> _savePrefs() async {
-    final p = await SharedPreferences.getInstance();
-    await p.setBool('push_notif',  _pushEnabled);
-    await p.setBool('email_notif', _emailEnabled);
+  @override
+  void dispose() {
+    _tab.dispose();
+    super.dispose();
   }
 
   @override
@@ -42,140 +37,438 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final auth      = context.watch<AuthProvider>();
     final profile   = auth.profile ?? {};
     final isStudent = auth.isStudent;
+    final name      = auth.displayName.isEmpty ? 'Хэрэглэгч' : auth.displayName;
+    final email     = profile['email'] as String? ?? '';
+    final photoUrl  = profile['photoUrl'] as String?;
 
     return Scaffold(
       backgroundColor: AppColors.bg,
-      appBar: AppBar(
-        backgroundColor: AppColors.bg,
-        automaticallyImplyLeading: false,
-        title: const Text('Профайл'),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          // Avatar + name
-          Center(
-            child: Column(children: [
-              _Avatar(name: auth.displayName),
-              const SizedBox(height: 12),
-              Text(auth.displayName.isEmpty ? '—' : auth.displayName,
-                  style: const TextStyle(
-                      fontSize: 20, fontWeight: FontWeight.w500)),
-              const SizedBox(height: 4),
-              Text(isStudent ? 'Оюутан' : 'Компани',
-                  style: const TextStyle(
-                      fontSize: 12, color: AppColors.textSecondary)),
-            ]),
-          ),
-          const SizedBox(height: 24),
-
-          // Profile info
-          if (isStudent) ..._studentInfo(profile)
-          else           ..._companyInfo(profile),
-          const SizedBox(height: 24),
-
-          // Settings
-          const SectionLabel('Тохиргоо'),
-          _ToggleRow('Push мэдэгдэл', _pushEnabled, (v) {
-            setState(() => _pushEnabled = v);
-            _savePrefs();
-          }),
-          _ToggleRow('Имэйл мэдэгдэл', _emailEnabled, (v) {
-            setState(() => _emailEnabled = v);
-            _savePrefs();
-          }),
-          const SizedBox(height: 16),
-
-          // Account actions
-          const SectionLabel('Бүртгэл'),
-          _ActionRow('Нууц үг солих',
-              Icons.lock_outline, () => _showChangePassword(context)),
-          _ActionRow('Профайл засах',
-              Icons.edit_outlined, () => _showEditProfile(context, auth, profile, isStudent)),
-          if (isStudent)
-            _ActionRow('CV Maker', Icons.description_outlined,
-                () => context.push('/cv')),
-          const SizedBox(height: 8),
-
-          // Logout
-          OutlinedButton.icon(
-            onPressed: () => _confirmLogout(context, auth),
-            icon: const Icon(Icons.logout, size: 18, color: AppColors.red),
-            label: const Text('Гарах',
-                style: TextStyle(color: AppColors.red, fontSize: 14)),
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: AppColors.red, width: 0.5),
-              minimumSize: const Size(double.infinity, 48),
+      body: NestedScrollView(
+        headerSliverBuilder: (_, __) => [
+          SliverAppBar(
+            expandedHeight: 220,
+            pinned: true,
+            automaticallyImplyLeading: false,
+            backgroundColor: AppColors.primary,
+            flexibleSpace: FlexibleSpaceBar(
+              background: _ProfileHeader(
+                name: name,
+                email: email,
+                photoUrl: photoUrl,
+                isStudent: isStudent,
+                auth: auth,
+                profile: profile,
+              ),
             ),
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(48),
+              child: Container(
+                color: AppColors.white,
+                child: TabBar(
+                  controller: _tab,
+                  labelColor: AppColors.primary,
+                  unselectedLabelColor: AppColors.textTertiary,
+                  indicatorColor: AppColors.primary,
+                  indicatorWeight: 2.5,
+                  labelStyle: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w600),
+                  tabs: const [
+                    Tab(text: 'Профайл'),
+                    Tab(text: 'Засах'),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.settings_outlined,
+                    color: Colors.white, size: 22),
+                onPressed: () => context.push('/settings'),
+              ),
+            ],
           ),
-          const SizedBox(height: 24),
         ],
+        body: TabBarView(
+          controller: _tab,
+          children: [
+            _ViewTab(profile: profile, isStudent: isStudent, auth: auth),
+            _EditTab(auth: auth, profile: profile, isStudent: isStudent),
+          ],
+        ),
       ),
     );
   }
+}
 
-  List<Widget> _studentInfo(Map<String, dynamic> p) => [
-    const SectionLabel('Хувийн мэдээлэл'),
-    _InfoRow('Их сургууль', p['university'] as String? ?? '—'),
-    _InfoRow('Мэргэжил',    p['major']      as String? ?? '—'),
-    _InfoRow('Курс',        '${p['year'] ?? '—'}-р курс'),
-    _InfoRow('Имэйл',       p['email']      as String? ?? '—'),
-    if ((p['bio'] as String? ?? '').isNotEmpty) ...[
-      const SizedBox(height: 16),
-      const SectionLabel('Товч танилцуулга'),
-      Text(p['bio'] as String,
+// ── Profile Header ────────────────────────────────────────
+class _ProfileHeader extends StatefulWidget {
+  final String name, email;
+  final String? photoUrl;
+  final bool isStudent;
+  final AuthProvider auth;
+  final Map<String, dynamic> profile;
+  const _ProfileHeader({
+    required this.name, required this.email, required this.photoUrl,
+    required this.isStudent, required this.auth, required this.profile,
+  });
+  @override
+  State<_ProfileHeader> createState() => _ProfileHeaderState();
+}
+
+class _ProfileHeaderState extends State<_ProfileHeader> {
+  bool _uploading = false;
+
+  Future<void> _pickAndUpload() async {
+    final picker = ImagePicker();
+    final xFile  = await picker.pickImage(
+        source: ImageSource.gallery, imageQuality: 75, maxWidth: 600);
+    if (xFile == null) return;
+    if (!mounted) return;
+
+    setState(() => _uploading = true);
+    try {
+      final uid = widget.auth.user?.uid ?? '';
+      final ref = FirebaseStorage.instance
+          .ref()
+          .child('avatars/$uid.jpg');
+      await ref.putFile(File(xFile.path));
+      final url = await ref.getDownloadURL();
+      await widget.auth.updateProfile({'photoUrl': url});
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Зураг оруулахад алдаа гарлаа: $e'),
+          backgroundColor: AppColors.red,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1D4ED8), Color(0xFF2563EB), Color(0xFF3B82F6)],
+        ),
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+          child: Row(children: [
+            // Avatar with edit button
+            Stack(children: [
+              GestureDetector(
+                onTap: _pickAndUpload,
+                child: Container(
+                  width: 76, height: 76,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2.5),
+                    color: Colors.white.withValues(alpha: 0.2),
+                  ),
+                  child: _uploading
+                      ? const Center(
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2))
+                      : widget.photoUrl != null
+                          ? ClipOval(
+                              child: Image.network(
+                                widget.photoUrl!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) =>
+                                    _AvatarInitials(name: widget.name),
+                              ),
+                            )
+                          : _AvatarInitials(name: widget.name),
+                ),
+              ),
+              Positioned(
+                bottom: 0, right: 0,
+                child: GestureDetector(
+                  onTap: _pickAndUpload,
+                  child: Container(
+                    width: 24, height: 24,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                          color: AppColors.primary, width: 1.5),
+                    ),
+                    child: const Icon(Icons.edit,
+                        size: 13, color: AppColors.primary),
+                  ),
+                ),
+              ),
+            ]),
+            const SizedBox(width: 16),
+            Expanded(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(widget.name,
+                    style: const TextStyle(
+                        fontSize: 20, fontWeight: FontWeight.w700,
+                        color: Colors.white)),
+                const SizedBox(height: 2),
+                Text(widget.email,
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.white.withValues(alpha: 0.8))),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    widget.isStudent ? 'Оюутан' : 'Компани',
+                    style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary),
+                  ),
+                ),
+              ],
+            )),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+class _AvatarInitials extends StatelessWidget {
+  final String name;
+  const _AvatarInitials({required this.name});
+  @override
+  Widget build(BuildContext context) {
+    final initials = name.length >= 2
+        ? name.substring(0, 2).toUpperCase()
+        : name.toUpperCase();
+    return Center(
+      child: Text(initials.isEmpty ? '?' : initials,
           style: const TextStyle(
-              fontSize: 13, color: AppColors.textSecondary, height: 1.5)),
-    ],
-    if ((p['skills'] as List?)?.isNotEmpty == true) ...[
-      const SizedBox(height: 16),
-      const SectionLabel('Ур чадвар'),
-      Wrap(
-        spacing: 8, runSpacing: 8,
-        children: (p['skills'] as List).cast<String>().map((s) => Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-          decoration: BoxDecoration(
+              fontSize: 26, fontWeight: FontWeight.w700,
+              color: Colors.white)),
+    );
+  }
+}
+
+// ── View Tab ──────────────────────────────────────────────
+class _ViewTab extends StatelessWidget {
+  final Map<String, dynamic> profile;
+  final bool isStudent;
+  final AuthProvider auth;
+  const _ViewTab(
+      {required this.profile, required this.isStudent, required this.auth});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        // Weather & calendar
+        const WeatherDateHeader(),
+        const SizedBox(height: 4),
+        _CalendarStrip(),
+        const SizedBox(height: 16),
+
+        // Info card
+        _InfoCard(children: [
+          if (isStudent) ...[
+            _InfoRow(Icons.school_outlined, 'Их сургууль',
+                profile['university'] as String? ?? '—'),
+            _InfoRow(Icons.book_outlined, 'Мэргэжил',
+                profile['major'] as String? ?? '—'),
+            _InfoRow(Icons.grade_outlined, 'Курс',
+                '${profile['year'] ?? '—'}-р курс'),
+            _InfoRow(Icons.email_outlined, 'Имэйл',
+                profile['email'] as String? ?? '—'),
+            if ((profile['gpa'] as String? ?? '').isNotEmpty)
+              _InfoRow(Icons.star_outline_rounded, 'GPA',
+                  profile['gpa'] as String),
+          ] else ...[
+            _InfoRow(Icons.business_outlined, 'Компани',
+                profile['name'] as String? ?? '—'),
+            _InfoRow(Icons.category_outlined, 'Салбар',
+                profile['industry'] as String? ?? '—'),
+            _InfoRow(Icons.people_outline, 'Ажилтан',
+                profile['size'] as String? ?? '—'),
+            _InfoRow(Icons.email_outlined, 'Имэйл',
+                profile['email'] as String? ?? '—'),
+          ],
+        ]),
+
+        if ((profile['bio'] as String? ?? '').isNotEmpty) ...[
+          const SizedBox(height: 16),
+          const _SectionTitle('Товч танилцуулга'),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
               color: AppColors.white,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.border, width: 0.5)),
-          child: Text(s, style: const TextStyle(fontSize: 12)),
-        )).toList(),
-      ),
-    ],
-  ];
-
-  List<Widget> _companyInfo(Map<String, dynamic> p) => [
-    const SectionLabel('Компанийн мэдээлэл'),
-    _InfoRow('Нэр',    p['name']        as String? ?? '—'),
-    _InfoRow('Салбар', p['industry']    as String? ?? '—'),
-    _InfoRow('Хэмжээ', p['size']        as String? ?? '—'),
-    _InfoRow('Имэйл',  p['email']       as String? ?? '—'),
-    if ((p['description'] as String? ?? '').isNotEmpty) ...[
-      const SizedBox(height: 16),
-      const SectionLabel('Тухай'),
-      Text(p['description'] as String,
-          style: const TextStyle(
-              fontSize: 13, color: AppColors.textSecondary, height: 1.5)),
-    ],
-  ];
-
-  void _confirmLogout(BuildContext context, AuthProvider auth) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Гарах', style: TextStyle(fontSize: 16)),
-        content: const Text('Та гарахдаа итгэлтэй байна уу?',
-            style: TextStyle(fontSize: 13)),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Болих')),
-          ElevatedButton(
-              onPressed: () { Navigator.pop(context); auth.logout(); },
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.red),
-              child: const Text('Гарах')),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.border, width: 0.8),
+            ),
+            child: Text(profile['bio'] as String,
+                style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                    height: 1.6)),
+          ),
         ],
+
+        if ((profile['skills'] as List?)?.isNotEmpty == true) ...[
+          const SizedBox(height: 16),
+          const _SectionTitle('Ур чадвар'),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8, runSpacing: 8,
+            children: (profile['skills'] as List).cast<String>().map((s) =>
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryLight,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                        color: AppColors.primaryMid, width: 0.8),
+                  ),
+                  child: Text(s,
+                      style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w500)),
+                )).toList(),
+          ),
+        ],
+
+        const SizedBox(height: 24),
+
+        // Quick actions
+        const _SectionTitle('Хурдан үйлдэл'),
+        const SizedBox(height: 10),
+        _ActionList(isStudent: isStudent, auth: auth),
+
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+}
+
+class _InfoCard extends StatelessWidget {
+  final List<Widget> children;
+  const _InfoCard({required this.children});
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    decoration: BoxDecoration(
+      color: AppColors.white,
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: AppColors.border, width: 0.8),
+    ),
+    child: Column(children: children),
+  );
+}
+
+class _InfoRow extends StatelessWidget {
+  final IconData icon;
+  final String label, value;
+  const _InfoRow(this.icon, this.label, this.value);
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+    child: Row(children: [
+      Container(
+        width: 32, height: 32,
+        decoration: BoxDecoration(
+          color: AppColors.primaryLight,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, size: 16, color: AppColors.primary),
       ),
+      const SizedBox(width: 12),
+      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(label,
+            style: const TextStyle(
+                fontSize: 10, color: AppColors.textTertiary,
+                fontWeight: FontWeight.w500)),
+        Text(value,
+            style: const TextStyle(
+                fontSize: 13, fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary)),
+      ])),
+    ]),
+  );
+}
+
+class _SectionTitle extends StatelessWidget {
+  final String text;
+  const _SectionTitle(this.text);
+  @override
+  Widget build(BuildContext context) => Text(text,
+      style: const TextStyle(
+          fontSize: 14, fontWeight: FontWeight.w700,
+          color: AppColors.textPrimary));
+}
+
+class _ActionList extends StatelessWidget {
+  final bool isStudent;
+  final AuthProvider auth;
+  const _ActionList({required this.isStudent, required this.auth});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border, width: 0.8),
+      ),
+      child: Column(children: [
+        if (isStudent)
+          _ActionTile(
+            icon: Icons.description_outlined,
+            iconColor: AppColors.primary,
+            iconBg: AppColors.primaryLight,
+            label: 'CV Maker',
+            sub: 'PDF татаж авах боломжтой',
+            onTap: () => context.push('/cv'),
+          ),
+        _ActionTile(
+          icon: Icons.notifications_outlined,
+          iconColor: AppColors.amber,
+          iconBg: AppColors.amberLight,
+          label: 'Мэдэгдлийн тохиргоо',
+          sub: 'Push, имэйл мэдэгдэл',
+          onTap: () => context.push('/settings'),
+        ),
+        _ActionTile(
+          icon: Icons.lock_outline_rounded,
+          iconColor: AppColors.purple,
+          iconBg: AppColors.purpleLight,
+          label: 'Нууц үг солих',
+          sub: 'Аккаунт аюулгүй байдал',
+          onTap: () => _showChangePassword(context),
+        ),
+        _ActionTile(
+          icon: Icons.settings_outlined,
+          iconColor: AppColors.teal,
+          iconBg: AppColors.tealLight,
+          label: 'Апп тохиргоо',
+          sub: 'Дүрслэл, хэл, нууцлал',
+          onTap: () => context.push('/settings'),
+          isLast: true,
+        ),
+      ]),
     );
   }
 
@@ -183,23 +476,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final newCtrl  = TextEditingController();
     final confCtrl = TextEditingController();
     bool obscure = true;
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSt) => Padding(
           padding: EdgeInsets.fromLTRB(
               24, 24, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
           child: Column(mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Нууц үг солих',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w500)),
-            const SizedBox(height: 16),
+            Row(children: [
+              Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.purpleLight,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.lock_outline_rounded,
+                    color: AppColors.purple, size: 20),
+              ),
+              const SizedBox(width: 12),
+              const Text('Нууц үг солих',
+                  style: TextStyle(
+                      fontSize: 17, fontWeight: FontWeight.w700)),
+            ]),
+            const SizedBox(height: 20),
             const Text('Шинэ нууц үг',
-                style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary)),
             const SizedBox(height: 6),
             TextField(
               controller: newCtrl,
@@ -215,20 +522,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             const Text('Баталгаажуулах',
-                style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary)),
             const SizedBox(height: 6),
             TextField(
                 controller: confCtrl,
                 obscureText: obscure,
                 decoration: const InputDecoration(hintText: 'Дахин оруулах')),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () async {
                 if (newCtrl.text.length < 6) {
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                    content: Text('Нууц үг 6-аас дээш тэмдэгттэй байх ёстой'),
+                    content: Text('Нууц үг 6+ тэмдэгттэй байна'),
                     backgroundColor: AppColors.red,
                     behavior: SnackBarBehavior.floating,
                   ));
@@ -255,7 +563,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 } catch (e) {
                   if (ctx.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text('Алдаа: ${e.toString()}'),
+                      content: Text('Алдаа: $e'),
                       backgroundColor: AppColors.red,
                       behavior: SnackBarBehavior.floating,
                     ));
@@ -269,114 +577,117 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
-
-  void _showEditProfile(BuildContext context, AuthProvider auth,
-      Map<String, dynamic> profile, bool isStudent) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => _EditProfileSheet(auth: auth, profile: profile, isStudent: isStudent),
-    );
-  }
 }
 
-// ── Widgets ───────────────────────────────────────────
-class _Avatar extends StatelessWidget {
-  final String name;
-  const _Avatar({required this.name});
+class _ActionTile extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor, iconBg;
+  final String label, sub;
+  final VoidCallback onTap;
+  final bool isLast;
+  const _ActionTile({
+    required this.icon, required this.iconColor, required this.iconBg,
+    required this.label, required this.sub, required this.onTap,
+    this.isLast = false,
+  });
+
+  @override
+  Widget build(BuildContext context) => Column(children: [
+    InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(children: [
+          Container(
+            width: 40, height: 40,
+            decoration: BoxDecoration(
+              color: iconBg,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 20, color: iconColor),
+          ),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(label,
+                style: const TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary)),
+            Text(sub,
+                style: const TextStyle(
+                    fontSize: 11, color: AppColors.textSecondary)),
+          ])),
+          const Icon(Icons.chevron_right_rounded,
+              size: 20, color: AppColors.textTertiary),
+        ]),
+      ),
+    ),
+    if (!isLast)
+      const Divider(height: 1, indent: 66),
+  ]);
+}
+
+// ── Calendar strip (reused from home) ────────────────────
+class _CalendarStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final initials = name.length >= 2
-        ? name.substring(0, 2).toUpperCase()
-        : name.toUpperCase();
-    return CircleAvatar(
-      radius: 40,
-      backgroundColor: AppColors.purpleLight,
-      child: Text(initials.isEmpty ? '?' : initials,
-          style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w500,
-              color: AppColors.purple)),
+    final today  = DateTime.now();
+    final monday = today.subtract(Duration(days: today.weekday - 1));
+    final days   = List.generate(7, (i) => monday.add(Duration(days: i)));
+    const labels = ['Да', 'Мя', 'Лх', 'Пү', 'Ба', 'Бя', 'Ня'];
+    return Row(
+      children: days.asMap().entries.map((e) {
+        final isToday = e.value.day == today.day &&
+            e.value.month == today.month;
+        return Expanded(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            margin: const EdgeInsets.symmetric(horizontal: 2),
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            decoration: BoxDecoration(
+              color: isToday ? AppColors.primary : AppColors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: isToday ? AppColors.primary : AppColors.border,
+                width: 0.8,
+              ),
+            ),
+            child: Column(children: [
+              Text(labels[e.key],
+                  style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
+                      color: isToday
+                          ? Colors.white.withValues(alpha: 0.8)
+                          : AppColors.textTertiary)),
+              const SizedBox(height: 3),
+              Text('${e.value.day}',
+                  style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: isToday
+                          ? Colors.white
+                          : AppColors.textPrimary)),
+            ]),
+          ),
+        );
+      }).toList(),
     );
   }
 }
 
-class _InfoRow extends StatelessWidget {
-  final String label, value;
-  const _InfoRow(this.label, this.value);
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 10),
-    child: Row(children: [
-      SizedBox(
-          width: 100,
-          child: Text(label,
-              style: const TextStyle(
-                  fontSize: 12, color: AppColors.textSecondary))),
-      Expanded(
-          child: Text(value,
-              style: const TextStyle(
-                  fontSize: 13, fontWeight: FontWeight.w500))),
-    ]),
-  );
-}
-
-class _ToggleRow extends StatelessWidget {
-  final String label;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-  const _ToggleRow(this.label, this.value, this.onChanged);
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 6),
-    child: Row(children: [
-      Expanded(child: Text(label, style: const TextStyle(fontSize: 13))),
-      Switch.adaptive(
-        value: value,
-        onChanged: onChanged,
-        activeColor: AppColors.black,
-      ),
-    ]),
-  );
-}
-
-class _ActionRow extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final VoidCallback onTap;
-  const _ActionRow(this.label, this.icon, this.onTap);
-
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: const BoxDecoration(
-          border: Border(bottom: BorderSide(color: AppColors.border, width: 0.5))),
-      child: Row(children: [
-        Icon(icon, size: 18, color: AppColors.textSecondary),
-        const SizedBox(width: 12),
-        Expanded(child: Text(label, style: const TextStyle(fontSize: 13))),
-        const Icon(Icons.chevron_right, size: 18, color: AppColors.textTertiary),
-      ]),
-    ),
-  );
-}
-
-// ── Edit Profile Sheet ────────────────────────────────
-class _EditProfileSheet extends StatefulWidget {
+// ── Edit Tab ──────────────────────────────────────────────
+class _EditTab extends StatefulWidget {
   final AuthProvider auth;
   final Map<String, dynamic> profile;
   final bool isStudent;
-  const _EditProfileSheet({required this.auth, required this.profile, required this.isStudent});
+  const _EditTab(
+      {required this.auth, required this.profile, required this.isStudent});
   @override
-  State<_EditProfileSheet> createState() => _EditProfileSheetState();
+  State<_EditTab> createState() => _EditTabState();
 }
 
-class _EditProfileSheetState extends State<_EditProfileSheet> {
+class _EditTabState extends State<_EditTab> {
   late final Map<String, TextEditingController> _ctrls;
   final _skillCtrl = TextEditingController();
   late List<String> _skills;
@@ -393,6 +704,8 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
         'university': TextEditingController(text: p['university'] as String? ?? ''),
         'major':      TextEditingController(text: p['major']      as String? ?? ''),
         'year':       TextEditingController(text: '${p['year'] ?? ''}'),
+        'phone':      TextEditingController(text: p['phone']      as String? ?? ''),
+        'gpa':        TextEditingController(text: p['gpa']        as String? ?? ''),
         'bio':        TextEditingController(text: p['bio']        as String? ?? ''),
       };
       _skills = List<String>.from((p['skills'] as List?) ?? []);
@@ -403,6 +716,7 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
         'size':        TextEditingController(text: p['size']        as String? ?? ''),
         'description': TextEditingController(text: p['description'] as String? ?? ''),
         'website':     TextEditingController(text: p['website']     as String? ?? ''),
+        'phone':       TextEditingController(text: p['phone']       as String? ?? ''),
       };
       _skills = [];
     }
@@ -410,7 +724,7 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
 
   @override
   void dispose() {
-    for (final c in _ctrls.values) c.dispose();
+    for (final c in _ctrls.values) { c.dispose(); }
     _skillCtrl.dispose();
     super.dispose();
   }
@@ -427,107 +741,196 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
       for (final e in _ctrls.entries) e.key: e.value.text.trim(),
     };
     if (widget.isStudent) {
-      data['year'] = int.tryParse(data['year'] as String? ?? '') ?? 1;
+      data['year']   = int.tryParse(data['year'] as String? ?? '') ?? 1;
       data['skills'] = List<String>.from(_skills);
     }
     final ok = await widget.auth.updateProfile(data);
     if (!mounted) return;
     setState(() => _saving = false);
-    if (ok) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Профайл шинэчлэгдлээ'),
-        backgroundColor: AppColors.teal,
-        behavior: SnackBarBehavior.floating,
-      ));
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(widget.auth.error ?? 'Алдаа гарлаа'),
-        backgroundColor: AppColors.red,
-        behavior: SnackBarBehavior.floating,
-      ));
-    }
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(ok ? 'Профайл шинэчлэгдлээ ✓' : (widget.auth.error ?? 'Алдаа')),
+      backgroundColor: ok ? AppColors.teal : AppColors.red,
+      behavior: SnackBarBehavior.floating,
+    ));
   }
 
-  Widget _field(String label, String key, {TextInputType? type, int maxLines = 1}) =>
+  Widget _field(String label, String key,
+      {TextInputType? type, int maxLines = 1, String? hint}) =>
       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+        Text(label,
+            style: const TextStyle(
+                fontSize: 12, fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary)),
         const SizedBox(height: 6),
         TextField(
           controller: _ctrls[key],
           keyboardType: type,
           maxLines: maxLines,
-          decoration: InputDecoration(hintText: label),
+          decoration: InputDecoration(hintText: hint ?? label),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
       ]);
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-          20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 24),
-      child: SingleChildScrollView(
-        child: Column(mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(widget.isStudent ? 'Профайл засах' : 'Компани мэдээлэл засах',
-              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w500)),
-          const SizedBox(height: 16),
-
-          if (widget.isStudent) ...[
-            _field('Нэр', 'firstName'),
-            _field('Овог', 'lastName'),
-            _field('Их сургууль', 'university'),
-            _field('Мэргэжил', 'major'),
-            _field('Курс', 'year', type: TextInputType.number),
-            _field('Товч танилцуулга', 'bio', maxLines: 3),
-            const Text('Ур чадвар',
-                style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-            const SizedBox(height: 6),
-            Row(children: [
-              Expanded(
-                child: TextField(
-                  controller: _skillCtrl,
-                  decoration: const InputDecoration(hintText: 'React, Figma...'),
-                  onSubmitted: _addSkill,
-                ),
-              ),
-              const SizedBox(width: 6),
-              IconButton(
-                onPressed: () => _addSkill(_skillCtrl.text),
-                icon: const Icon(Icons.add_circle_outline, color: AppColors.black),
-              ),
-            ]),
-            if (_skills.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 6, runSpacing: 6,
-                children: _skills.map((s) => Chip(
-                  label: Text(s, style: const TextStyle(fontSize: 11)),
-                  deleteIcon: const Icon(Icons.close, size: 14),
-                  onDeleted: () => setState(() => _skills.remove(s)),
-                  padding: EdgeInsets.zero,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                )).toList(),
-              ),
-            ],
-            const SizedBox(height: 12),
-          ] else ...[
-            _field('Компанийн нэр', 'name'),
-            _field('Салбар', 'industry'),
-            _field('Ажилтны тоо', 'size'),
-            _field('Вебсайт', 'website'),
-            _field('Компанийн тухай', 'description', maxLines: 3),
-          ],
-
-          ElevatedButton(
-            onPressed: _saving ? null : _save,
-            child: _saving
-                ? const SizedBox(height: 20, width: 20,
-                    child: CircularProgressIndicator(color: AppColors.white, strokeWidth: 2))
-                : const Text('Хадгалах'),
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        // Header
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppColors.primaryLight,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.primaryMid, width: 0.8),
           ),
-        ]),
+          child: const Row(children: [
+            Icon(Icons.info_outline_rounded,
+                size: 18, color: AppColors.primary),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Профайлаа бүрэн бөглөсөн оюутан 3 дахин илүү боломж авдаг',
+                style: TextStyle(
+                    fontSize: 12, color: AppColors.primary, height: 1.4),
+              ),
+            ),
+          ]),
+        ),
+        const SizedBox(height: 20),
+
+        if (widget.isStudent) ...[
+          _field('Нэр', 'firstName', hint: 'Жишээ: Мөнхбаяр'),
+          _field('Овог', 'lastName', hint: 'Жишээ: Баяр'),
+          _field('Их сургууль', 'university', hint: 'МУИС, ШУТИС...'),
+          _field('Мэргэжил', 'major', hint: 'Програм хангамж, Дизайн...'),
+          _field('Курс', 'year',
+              type: TextInputType.number, hint: '1, 2, 3, 4...'),
+          _field('Утас', 'phone',
+              type: TextInputType.phone, hint: '+976 xxxxxxxx'),
+          _field('GPA', 'gpa', hint: '3.5'),
+          _field('Товч танилцуулга', 'bio', maxLines: 4,
+              hint: 'Өөрийн талаар товч бичих...'),
+
+          // Skills
+          const Text('Ур чадвар',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary)),
+          const SizedBox(height: 6),
+          Row(children: [
+            Expanded(
+              child: TextField(
+                controller: _skillCtrl,
+                decoration: const InputDecoration(
+                    hintText: 'React, Flutter, Figma...'),
+                onSubmitted: _addSkill,
+              ),
+            ),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: () => _addSkill(_skillCtrl.text),
+              child: Container(
+                width: 44, height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.add_rounded,
+                    color: Colors.white, size: 22),
+              ),
+            ),
+          ]),
+          if (_skills.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 6, runSpacing: 6,
+              children: _skills.map((s) => Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryLight,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                      color: AppColors.primaryMid, width: 0.8),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Text(s,
+                      style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w500)),
+                  const SizedBox(width: 4),
+                  GestureDetector(
+                    onTap: () => setState(() => _skills.remove(s)),
+                    child: const Icon(Icons.close_rounded,
+                        size: 13, color: AppColors.primary),
+                  ),
+                ]),
+              )).toList(),
+            ),
+          ],
+          const SizedBox(height: 20),
+        ] else ...[
+          _field('Компанийн нэр', 'name'),
+          _field('Салбар', 'industry', hint: 'IT, Санхүү, Маркетинг...'),
+          _field('Ажилтны тоо', 'size', hint: '10-50, 50-200...'),
+          _field('Утас', 'phone', type: TextInputType.phone),
+          _field('Вебсайт', 'website', hint: 'https://...'),
+          _field('Компанийн тухай', 'description', maxLines: 4),
+        ],
+
+        ElevatedButton(
+          onPressed: _saving ? null : _save,
+          child: _saving
+              ? const SizedBox(
+                  height: 20, width: 20,
+                  child: CircularProgressIndicator(
+                      color: Colors.white, strokeWidth: 2.5))
+              : const Text('Хадгалах'),
+        ),
+        const SizedBox(height: 16),
+        OutlinedButton.icon(
+          onPressed: () => _confirmLogout(context, widget.auth),
+          icon: const Icon(Icons.logout_rounded,
+              size: 18, color: AppColors.red),
+          label: const Text('Гарах',
+              style: TextStyle(
+                  color: AppColors.red, fontWeight: FontWeight.w600)),
+          style: OutlinedButton.styleFrom(
+            side: const BorderSide(color: AppColors.red),
+            foregroundColor: AppColors.red,
+          ),
+        ),
+        const SizedBox(height: 30),
+        const Center(
+          child: Text('Оюунтан v1.0.0',
+              style: TextStyle(
+                  fontSize: 11, color: AppColors.textTertiary)),
+        ),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+
+  void _confirmLogout(BuildContext context, AuthProvider auth) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16)),
+        title: const Text('Гарах', style: TextStyle(fontSize: 16)),
+        content: const Text('Та гарахдаа итгэлтэй байна уу?',
+            style: TextStyle(fontSize: 13)),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Болих')),
+          ElevatedButton(
+              onPressed: () { Navigator.pop(context); auth.logout(); },
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.red),
+              child: const Text('Гарах')),
+        ],
       ),
     );
   }

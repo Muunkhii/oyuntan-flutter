@@ -35,13 +35,13 @@ class _MainShellState extends State<MainShell> {
       _unreadStream = _buildStream(uid);
     }
 
-    final studentItems = [
+    const studentItems = [
       _NavItem('/home',          Icons.home_outlined,          Icons.home,          'Нүүр'),
       _NavItem('/notifications', Icons.notifications_outlined, Icons.notifications, 'Мэдэгдэл'),
       _NavItem('/internships',   Icons.work_outline,           Icons.work,          'Дадлага'),
       _NavItem('/profile',       Icons.person_outline,         Icons.person,        'Профайл'),
     ];
-    final companyItems = [
+    const companyItems = [
       _NavItem('/company',               Icons.home_outlined,          Icons.home,          'Нүүр'),
       _NavItem('/company/notifications', Icons.notifications_outlined, Icons.notifications, 'Мэдэгдэл'),
       _NavItem('/company/interns',       Icons.work_outline,           Icons.work,          'Дадлага'),
@@ -59,12 +59,29 @@ class _MainShellState extends State<MainShell> {
         return Scaffold(
           body: widget.child,
           bottomNavigationBar: Container(
-            decoration: const BoxDecoration(
-              border: Border(top: BorderSide(color: AppColors.border, width: 0.5)),
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              border: const Border(
+                  top: BorderSide(color: AppColors.border, width: 0.8)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 12,
+                  offset: const Offset(0, -2),
+                ),
+              ],
             ),
             child: BottomNavigationBar(
               currentIndex: idx,
               onTap: (i) => context.go(items[i].path),
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+              selectedItemColor: AppColors.primary,
+              unselectedItemColor: AppColors.textTertiary,
+              selectedLabelStyle: const TextStyle(
+                  fontSize: 10, fontWeight: FontWeight.w600),
+              unselectedLabelStyle: const TextStyle(fontSize: 10),
+              type: BottomNavigationBarType.fixed,
               items: items.asMap().entries.map((entry) {
                 final i    = entry.key;
                 final item = entry.value;
