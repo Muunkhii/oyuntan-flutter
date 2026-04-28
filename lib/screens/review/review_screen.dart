@@ -1,9 +1,7 @@
 // lib/screens/review/review_screen.dart
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
-import '../../providers/auth_provider.dart';
-import '../../services/firebase_service.dart';
+import '../../services/api_service.dart';
 
 class ReviewScreen extends StatefulWidget {
   final String internshipId;
@@ -24,7 +22,6 @@ class _ReviewScreenState extends State<ReviewScreen> {
   bool _saving       = false;
 
   String? _companyId;
-  String? _studentId;
 
   @override
   void initState() {
@@ -33,11 +30,10 @@ class _ReviewScreenState extends State<ReviewScreen> {
   }
 
   Future<void> _loadInternship() async {
-    final doc = await DB.internships.doc(widget.internshipId).get();
+    final data = await InternshipService().getInternship(widget.internshipId);
     if (mounted) {
       setState(() {
-        _companyId = doc.data()?['companyId'] as String? ?? doc.data()?['postId'] as String?;
-        _studentId = context.read<AuthProvider>().user?.uid;
+        _companyId = data['company_id'] as String? ?? data['post_id'] as String?;
       });
     }
   }
@@ -100,19 +96,18 @@ class _ReviewScreenState extends State<ReviewScreen> {
   }
 
   Future<void> _submit() async {
-    if (_companyId == null || _studentId == null) return;
+    if (_companyId == null) return;
     setState(() => _saving = true);
     try {
-      await _reviewService.submitReview(
-        internshipId:  widget.internshipId,
-        studentId:     _studentId!,
-        companyId:     _companyId!,
-        envScore:      _envScore,
-        mentorScore:   _mentorScore,
-        learnScore:    _learnScore,
-        relationScore: _relationScore,
-        wouldReturn:   _wouldReturn,
-        comment:       _commentCtrl.text.trim().isEmpty ? null : _commentCtrl.text.trim(),
+      await _reviewService.submit(
+        internshipId: widget.internshipId,
+        companyId:    _companyId!,
+        env:          _envScore,
+        mentor:       _mentorScore,
+        learn:        _learnScore,
+        relation:     _relationScore,
+        wouldReturn:  _wouldReturn,
+        comment:      _commentCtrl.text.trim().isEmpty ? null : _commentCtrl.text.trim(),
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(

@@ -1,1006 +1,622 @@
 // lib/screens/profile/profile_screen.dart
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../theme/app_theme.dart';
 import '../../providers/auth_provider.dart';
-import '../../services/firebase_service.dart';
-import '../../widgets/home_widgets.dart';
+import '../../providers/locale_provider.dart';
+import '../../services/api_service.dart';
 
-class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
-  @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
+// ── REVIEW SCREEN ─────────────────────────────────────────────
+class ReviewScreen extends StatefulWidget {
+  final String internshipId;
+  const ReviewScreen({super.key, required this.internshipId});
+  @override State<ReviewScreen> createState() => _RState();
 }
+class _RState extends State<ReviewScreen> {
+  final _scores  = <String, int>{'env': 0, 'mentor': 0, 'learn': 0, 'relation': 0};
+  bool? _wouldReturn;
+  final _comment = TextEditingController();
+  bool _saving = false, _done = false;
 
-class _ProfileScreenState extends State<ProfileScreen>
-    with SingleTickerProviderStateMixin {
-  late final TabController _tab;
+  static const _criteria = [
+    ('env',      'Ажлын орчин ба хамт олон'),
+    ('mentor',   'Менторийн дэмжлэг'),
+    ('learn',    'Суралцах боломж'),
+    ('relation', 'Харилцаа'),
+  ];
 
-  @override
-  void initState() {
-    super.initState();
-    _tab = TabController(length: 2, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tab.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final auth      = context.watch<AuthProvider>();
-    final profile   = auth.profile ?? {};
-    final isStudent = auth.isStudent;
-    final name      = auth.displayName.isEmpty ? 'Хэрэглэгч' : auth.displayName;
-    final email     = profile['email'] as String? ?? '';
-    final photoUrl  = profile['photoUrl'] as String?;
+  @override Widget build(BuildContext c) {
+    if (_done) return Scaffold(body: SafeArea(child: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+      Container(width: 64, height: 64,
+        decoration: const BoxDecoration(color: AppColors.greenLight, shape: BoxShape.circle),
+        child: const Icon(Icons.check, size: 32, color: AppColors.green)),
+      const SizedBox(height: 16),
+      const Text('Үнэлгээ илгээгдлээ', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+      const SizedBox(height: 8),
+      const Text('Таны сэтгэгдэл бусад оюутнуудад тусална', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: AppColors.muted)),
+      const SizedBox(height: 24),
+      TextButton(onPressed: () => c.go('/home'), child: const Text('Нүүр хуудас руу →')),
+    ]))));
 
     return Scaffold(
-      backgroundColor: AppColors.bg,
-      body: NestedScrollView(
-        headerSliverBuilder: (_, __) => [
-          SliverAppBar(
-            expandedHeight: 220,
-            pinned: true,
-            automaticallyImplyLeading: false,
-            backgroundColor: AppColors.primary,
-            flexibleSpace: FlexibleSpaceBar(
-              background: _ProfileHeader(
-                name: name,
-                email: email,
-                photoUrl: photoUrl,
-                isStudent: isStudent,
-                auth: auth,
-                profile: profile,
-              ),
-            ),
-            bottom: PreferredSize(
-              preferredSize: const Size.fromHeight(48),
-              child: Container(
-                color: AppColors.white,
-                child: TabBar(
-                  controller: _tab,
-                  labelColor: AppColors.primary,
-                  unselectedLabelColor: AppColors.textTertiary,
-                  indicatorColor: AppColors.primary,
-                  indicatorWeight: 2.5,
-                  labelStyle: const TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w600),
-                  tabs: const [
-                    Tab(text: 'Профайл'),
-                    Tab(text: 'Засах'),
-                  ],
-                ),
-              ),
-            ),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.settings_outlined,
-                    color: Colors.white, size: 22),
-                onPressed: () => context.push('/settings'),
-              ),
-            ],
-          ),
-        ],
-        body: TabBarView(
-          controller: _tab,
-          children: [
-            _ViewTab(profile: profile, isStudent: isStudent, auth: auth),
-            _EditTab(auth: auth, profile: profile, isStudent: isStudent),
-          ],
-        ),
-      ),
+      appBar: AppBar(title: const Text('Компани үнэлэх')),
+      body: SingleChildScrollView(padding: const EdgeInsets.all(20), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Container(padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(color: AppColors.greenLight, borderRadius: BorderRadius.circular(12)),
+          child: const Row(children: [
+            Icon(Icons.check_circle_outline, color: AppColors.green, size: 20),
+            SizedBox(width: 8),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Дадлага дууслаа!', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.green)),
+              Text('Компанид үнэлгээ өгнө үү', style: TextStyle(fontSize: 11, color: AppColors.green)),
+            ])),
+          ])),
+        const SizedBox(height: 20),
+        ..._criteria.map((cr) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          AppCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(cr.$2, style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+            const SizedBox(height: 8),
+            Row(children: List.generate(5, (i) => GestureDetector(
+              onTap: () => setState(() => _scores[cr.$1] = i + 1),
+              child: Padding(padding: const EdgeInsets.only(right: 6),
+                child: Icon(i < (_scores[cr.$1] ?? 0) ? Icons.star_rounded : Icons.star_outline_rounded,
+                  size: 30, color: i < (_scores[cr.$1] ?? 0) ? const Color(0xFFF59E0B) : AppColors.faint)),
+            ))),
+          ])),
+          const SizedBox(height: 10),
+        ])),
+        const SectionLabel('Дахин энэ компанид дадлага хийх уу?'),
+        Row(children: [
+          Expanded(child: _ynBtn('Тийм',  _wouldReturn == true,  () => setState(() => _wouldReturn = true))),
+          const SizedBox(width: 10),
+          Expanded(child: _ynBtn('Үгүй', _wouldReturn == false, () => setState(() => _wouldReturn = false))),
+        ]),
+        const SizedBox(height: 20),
+        const SectionLabel('Ерөнхий сэтгэгдэл'),
+        TextField(controller: _comment, maxLines: 4, decoration: const InputDecoration(hintText: 'Дадлагын туршлагаа дэлгэрэнгүй бичнэ үү...')),
+        const SizedBox(height: 28),
+        PrimaryButton(label: 'Үнэлгээ илгээх', loading: _saving, onTap: _submit),
+        const SizedBox(height: 30),
+      ])),
     );
   }
-}
 
-// ── Profile Header ────────────────────────────────────────
-class _ProfileHeader extends StatefulWidget {
-  final String name, email;
-  final String? photoUrl;
-  final bool isStudent;
-  final AuthProvider auth;
-  final Map<String, dynamic> profile;
-  const _ProfileHeader({
-    required this.name, required this.email, required this.photoUrl,
-    required this.isStudent, required this.auth, required this.profile,
-  });
-  @override
-  State<_ProfileHeader> createState() => _ProfileHeaderState();
-}
+  Widget _ynBtn(String l, bool on, VoidCallback t) => GestureDetector(onTap: t, child: AnimatedContainer(
+    duration: const Duration(milliseconds: 150), padding: const EdgeInsets.symmetric(vertical: 12),
+    decoration: BoxDecoration(color: on ? AppColors.primary : AppColors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: on ? AppColors.primary : AppColors.border, width: on ? 1.5 : 0.5)),
+    child: Text(l, textAlign: TextAlign.center, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: on ? AppColors.white : AppColors.muted)),
+  ));
 
-class _ProfileHeaderState extends State<_ProfileHeader> {
-  bool _uploading = false;
-  double _uploadProgress = 0;
-
-  Future<void> _pickAndUpload() async {
-    final picker = ImagePicker();
-    final xFile  = await picker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 80,
-        maxWidth: 800,
-        maxHeight: 800);
-    if (xFile == null) return;
-    if (!mounted) return;
-
-    setState(() { _uploading = true; _uploadProgress = 0; });
-
+  Future<void> _submit() async {
+    if (_scores.values.any((v) => v == 0)) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Бүх үнэлгээг дүүргэнэ үү'), backgroundColor: AppColors.red, behavior: SnackBarBehavior.floating));
+      return;
+    }
+    if (_wouldReturn == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Дахин хийх эсэхийг сонгоно уу'), backgroundColor: AppColors.red, behavior: SnackBarBehavior.floating));
+      return;
+    }
+    setState(() => _saving = true);
     try {
-      final uid = widget.auth.user?.uid ?? '';
-      if (uid.isEmpty) throw Exception('Нэвтрээгүй байна');
-
-      // Read bytes (works on all platforms — no dart:io needed)
-      final bytes = await xFile.readAsBytes();
-
-      final ref = FirebaseStorage.instance
-          .ref('avatars/$uid.jpg');
-
-      // Upload with progress tracking
-      final uploadTask = ref.putData(
-        bytes,
-        SettableMetadata(contentType: 'image/jpeg'),
+      final intern = await InternshipService().getInternship(widget.internshipId);
+      final companyId = intern['company_id'] as String? ?? '';
+      await ReviewService().submit(
+        internshipId: widget.internshipId,
+        companyId: companyId,
+        env: _scores['env']!,
+        mentor: _scores['mentor']!,
+        learn: _scores['learn']!,
+        relation: _scores['relation']!,
+        wouldReturn: _wouldReturn!,
+        comment: _comment.text.trim().isEmpty ? null : _comment.text.trim(),
       );
-
-      uploadTask.snapshotEvents.listen((snap) {
-        if (!mounted) return;
-        final progress = snap.bytesTransferred / snap.totalBytes;
-        setState(() => _uploadProgress = progress);
-      });
-
-      await uploadTask;
-      final url = await ref.getDownloadURL();
-      await widget.auth.updateProfile({'photoUrl': url});
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Профайл зураг шинэчлэгдлээ ✓'),
-          backgroundColor: AppColors.teal,
-          behavior: SnackBarBehavior.floating,
-        ));
-      }
-    } on FirebaseException catch (e) {
-      if (!mounted) return;
-      final msg = switch (e.code) {
-        'unauthorized'       => 'Firebase Storage зөвшөөрөл байхгүй. Rules шалгана уу.',
-        'canceled'           => 'Upload цуцлагдлаа',
-        'storage/unauthorized' => 'Storage Rules зөвшөөрдөггүй байна',
-        _                    => 'Firebase алдаа: ${e.message}',
-      };
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(msg),
-        backgroundColor: AppColors.red,
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 5),
-      ));
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Алдаа: $e'),
-        backgroundColor: AppColors.red,
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 5),
-      ));
+      setState(() => _done = true);
+    } on ApiException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message), backgroundColor: AppColors.red));
     } finally {
-      if (mounted) setState(() { _uploading = false; _uploadProgress = 0; });
+      if (mounted) setState(() => _saving = false);
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF1D4ED8), Color(0xFF2563EB), Color(0xFF3B82F6)],
-        ),
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-          child: Row(children: [
-            // Avatar with edit button
-            Stack(children: [
-              GestureDetector(
-                onTap: _uploading ? null : _pickAndUpload,
-                child: SizedBox(
-                  width: 80, height: 80,
-                  child: Stack(alignment: Alignment.center, children: [
-                    // Progress ring
-                    if (_uploading)
-                      SizedBox(
-                        width: 80, height: 80,
-                        child: CircularProgressIndicator(
-                          value: _uploadProgress > 0 ? _uploadProgress : null,
-                          color: Colors.white,
-                          strokeWidth: 3,
-                          backgroundColor: Colors.white.withValues(alpha: 0.3),
-                        ),
-                      ),
-                    // Avatar circle
-                    Container(
-                      width: _uploading ? 64 : 76,
-                      height: _uploading ? 64 : 76,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                            color: Colors.white,
-                            width: _uploading ? 0 : 2.5),
-                        color: Colors.white.withValues(alpha: 0.2),
-                      ),
-                      child: ClipOval(
-                        child: _uploading
-                            ? Center(
-                                child: Text(
-                                  '${(_uploadProgress * 100).toInt()}%',
-                                  style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700),
-                                ),
-                              )
-                            : widget.photoUrl != null
-                                ? Image.network(
-                                    widget.photoUrl!,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) =>
-                                        _AvatarInitials(name: widget.name),
-                                  )
-                                : _AvatarInitials(name: widget.name),
-                      ),
-                    ),
-                  ]),
-                ),
-              ),
-              // Edit pencil icon
-              Positioned(
-                bottom: 0, right: 0,
-                child: GestureDetector(
-                  onTap: _uploading ? null : _pickAndUpload,
-                  child: Container(
-                    width: 24, height: 24,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.primary, width: 1.5),
-                    ),
-                    child: const Icon(Icons.edit,
-                        size: 13, color: AppColors.primary),
-                  ),
-                ),
-              ),
-            ]),
-            const SizedBox(width: 16),
-            Expanded(child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(widget.name,
-                    style: const TextStyle(
-                        fontSize: 20, fontWeight: FontWeight.w700,
-                        color: Colors.white)),
-                const SizedBox(height: 2),
-                Text(widget.email,
-                    style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.white.withValues(alpha: 0.8))),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    widget.isStudent ? 'Оюутан' : 'Компани',
-                    style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primary),
-                  ),
-                ),
-              ],
-            )),
-          ]),
-        ),
-      ),
-    );
-  }
+  @override void dispose() { _comment.dispose(); super.dispose(); }
 }
 
-class _AvatarInitials extends StatelessWidget {
-  final String name;
-  const _AvatarInitials({required this.name});
-  @override
-  Widget build(BuildContext context) {
-    final initials = name.length >= 2
-        ? name.substring(0, 2).toUpperCase()
-        : name.toUpperCase();
-    return Center(
-      child: Text(initials.isEmpty ? '?' : initials,
-          style: const TextStyle(
-              fontSize: 26, fontWeight: FontWeight.w700,
-              color: Colors.white)),
-    );
-  }
-}
-
-// ── View Tab ──────────────────────────────────────────────
-class _ViewTab extends StatelessWidget {
-  final Map<String, dynamic> profile;
-  final bool isStudent;
-  final AuthProvider auth;
-  const _ViewTab(
-      {required this.profile, required this.isStudent, required this.auth});
+// ─────────────────────────────────────────────────────────────
+//  PROFILE SCREEN
+// ─────────────────────────────────────────────────────────────
+class ProfileScreen extends StatelessWidget {
+  const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        // Weather & calendar
-        const WeatherDateHeader(),
-        const SizedBox(height: 4),
-        _CalendarStrip(),
-        const SizedBox(height: 16),
+    final auth   = context.watch<AuthProvider>();
+    final locale = context.watch<LocaleProvider>();
+    final mn     = locale.isMN;
 
-        // Info card
-        _InfoCard(children: [
-          if (isStudent) ...[
-            _InfoRow(Icons.school_outlined, 'Их сургууль',
-                profile['university'] as String? ?? '—'),
-            _InfoRow(Icons.book_outlined, 'Мэргэжил',
-                profile['major'] as String? ?? '—'),
-            _InfoRow(Icons.grade_outlined, 'Курс',
-                '${profile['year'] ?? '—'}-р курс'),
-            _InfoRow(Icons.email_outlined, 'Имэйл',
-                profile['email'] as String? ?? '—'),
-            if ((profile['gpa'] as String? ?? '').isNotEmpty)
-              _InfoRow(Icons.star_outline_rounded, 'GPA',
-                  profile['gpa'] as String),
-          ] else ...[
-            _InfoRow(Icons.business_outlined, 'Компани',
-                profile['name'] as String? ?? '—'),
-            _InfoRow(Icons.category_outlined, 'Салбар',
-                profile['industry'] as String? ?? '—'),
-            _InfoRow(Icons.people_outline, 'Ажилтан',
-                profile['size'] as String? ?? '—'),
-            _InfoRow(Icons.email_outlined, 'Имэйл',
-                profile['email'] as String? ?? '—'),
-          ],
-        ]),
+    final name  = auth.displayName.isEmpty ? (mn ? 'Хэрэглэгч' : 'User') : auth.displayName;
+    final email = auth.profile?['email'] as String? ?? '';
+    final sub   = auth.isStudent
+      ? '${auth.profile?['university'] ?? ''}'
+      : '${auth.profile?['industry'] ?? ''}';
 
-        if ((profile['bio'] as String? ?? '').isNotEmpty) ...[
-          const SizedBox(height: 16),
-          const _SectionTitle('Товч танилцуулга'),
-          const SizedBox(height: 8),
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F6FA),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0, scrolledUnderElevation: 0, centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.text),
+          onPressed: () => context.go(auth.isCompany ? '/company/home' : '/home'),
+        ),
+        title: Text(mn ? 'Миний профайл' : 'My Profile',
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.text)),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_outlined, color: AppColors.text),
+            onPressed: () => _showSettingsSheet(context, auth, locale),
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        child: Column(children: [
+          // ── Header ──────────────────────────────────────────
           Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppColors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.border, width: 0.8),
-            ),
-            child: Text(profile['bio'] as String,
-                style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textSecondary,
-                    height: 1.6)),
-          ),
-        ],
-
-        if ((profile['skills'] as List?)?.isNotEmpty == true) ...[
-          const SizedBox(height: 16),
-          const _SectionTitle('Ур чадвар'),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8, runSpacing: 8,
-            children: (profile['skills'] as List).cast<String>().map((s) =>
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryLight,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                        color: AppColors.primaryMid, width: 0.8),
-                  ),
-                  child: Text(s,
-                      style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w500)),
-                )).toList(),
-          ),
-        ],
-
-        const SizedBox(height: 24),
-
-        // Quick actions
-        const _SectionTitle('Хурдан үйлдэл'),
-        const SizedBox(height: 10),
-        _ActionList(isStudent: isStudent, auth: auth),
-
-        const SizedBox(height: 24),
-      ],
-    );
-  }
-}
-
-class _InfoCard extends StatelessWidget {
-  final List<Widget> children;
-  const _InfoCard({required this.children});
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(vertical: 4),
-    decoration: BoxDecoration(
-      color: AppColors.white,
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: AppColors.border, width: 0.8),
-    ),
-    child: Column(children: children),
-  );
-}
-
-class _InfoRow extends StatelessWidget {
-  final IconData icon;
-  final String label, value;
-  const _InfoRow(this.icon, this.label, this.value);
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-    child: Row(children: [
-      Container(
-        width: 32, height: 32,
-        decoration: BoxDecoration(
-          color: AppColors.primaryLight,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(icon, size: 16, color: AppColors.primary),
-      ),
-      const SizedBox(width: 12),
-      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label,
-            style: const TextStyle(
-                fontSize: 10, color: AppColors.textTertiary,
-                fontWeight: FontWeight.w500)),
-        Text(value,
-            style: const TextStyle(
-                fontSize: 13, fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary)),
-      ])),
-    ]),
-  );
-}
-
-class _SectionTitle extends StatelessWidget {
-  final String text;
-  const _SectionTitle(this.text);
-  @override
-  Widget build(BuildContext context) => Text(text,
-      style: const TextStyle(
-          fontSize: 14, fontWeight: FontWeight.w700,
-          color: AppColors.textPrimary));
-}
-
-class _ActionList extends StatelessWidget {
-  final bool isStudent;
-  final AuthProvider auth;
-  const _ActionList({required this.isStudent, required this.auth});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border, width: 0.8),
-      ),
-      child: Column(children: [
-        if (isStudent)
-          _ActionTile(
-            icon: Icons.description_outlined,
-            iconColor: AppColors.primary,
-            iconBg: AppColors.primaryLight,
-            label: 'CV Maker',
-            sub: 'PDF татаж авах боломжтой',
-            onTap: () => context.push('/cv'),
-          ),
-        _ActionTile(
-          icon: Icons.notifications_outlined,
-          iconColor: AppColors.amber,
-          iconBg: AppColors.amberLight,
-          label: 'Мэдэгдлийн тохиргоо',
-          sub: 'Push, имэйл мэдэгдэл',
-          onTap: () => context.push('/settings'),
-        ),
-        _ActionTile(
-          icon: Icons.lock_outline_rounded,
-          iconColor: AppColors.purple,
-          iconBg: AppColors.purpleLight,
-          label: 'Нууц үг солих',
-          sub: 'Аккаунт аюулгүй байдал',
-          onTap: () => _showChangePassword(context),
-        ),
-        _ActionTile(
-          icon: Icons.settings_outlined,
-          iconColor: AppColors.teal,
-          iconBg: AppColors.tealLight,
-          label: 'Апп тохиргоо',
-          sub: 'Дүрслэл, хэл, нууцлал',
-          onTap: () => context.push('/settings'),
-          isLast: true,
-        ),
-      ]),
-    );
-  }
-
-  void _showChangePassword(BuildContext context) {
-    final newCtrl  = TextEditingController();
-    final confCtrl = TextEditingController();
-    bool obscure = true;
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSt) => Padding(
-          padding: EdgeInsets.fromLTRB(
-              24, 24, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
-          child: Column(mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Container(
-                width: 40, height: 40,
-                decoration: BoxDecoration(
-                  color: AppColors.purpleLight,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.lock_outline_rounded,
-                    color: AppColors.purple, size: 20),
-              ),
-              const SizedBox(width: 12),
-              const Text('Нууц үг солих',
-                  style: TextStyle(
-                      fontSize: 17, fontWeight: FontWeight.w700)),
+            width: double.infinity, color: Colors.white,
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
+            child: Column(children: [
+              _AvatarPicker(name: name, colorIndex: auth.isCompany ? 2 : 0, uid: auth.uid)
+                .animate().scale(begin: const Offset(0.7, 0.7), duration: 500.ms, curve: Curves.elasticOut),
+              const SizedBox(height: 14),
+              Text(name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.text)),
+              const SizedBox(height: 3),
+              if (email.isNotEmpty) Text(email, style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+              if (sub.isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text(sub, style: const TextStyle(fontSize: 11, color: AppColors.faint)),
+              ],
+              const SizedBox(height: 18),
+              SizedBox(width: 160, child: ElevatedButton(
+                onPressed: () => _showEditProfile(context, auth),
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white, elevation: 0, minimumSize: const Size(0, 42), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                child: Text(mn ? 'Профайл засах' : 'Edit Profile', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+              )),
             ]),
-            const SizedBox(height: 20),
-            const Text('Шинэ нууц үг',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary)),
-            const SizedBox(height: 6),
-            TextField(
-              controller: newCtrl,
-              obscureText: obscure,
-              decoration: InputDecoration(
-                hintText: '6+ тэмдэгт',
-                suffixIcon: IconButton(
-                  icon: Icon(obscure
-                      ? Icons.visibility_off_outlined
-                      : Icons.visibility_outlined,
-                      size: 18, color: AppColors.textTertiary),
-                  onPressed: () => setSt(() => obscure = !obscure),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            const Text('Баталгаажуулах',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary)),
-            const SizedBox(height: 6),
-            TextField(
-                controller: confCtrl,
-                obscureText: obscure,
-                decoration: const InputDecoration(hintText: 'Дахин оруулах')),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () async {
-                if (newCtrl.text.length < 6) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                    content: Text('Нууц үг 6+ тэмдэгттэй байна'),
-                    backgroundColor: AppColors.red,
-                    behavior: SnackBarBehavior.floating,
-                  ));
-                  return;
-                }
-                if (newCtrl.text != confCtrl.text) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                    content: Text('Нууц үг таарахгүй байна'),
-                    backgroundColor: AppColors.red,
-                    behavior: SnackBarBehavior.floating,
-                  ));
-                  return;
-                }
-                try {
-                  await AuthService().changePassword(newCtrl.text);
-                  if (ctx.mounted) {
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('Нууц үг амжилттай солигдлоо'),
-                      backgroundColor: AppColors.teal,
-                      behavior: SnackBarBehavior.floating,
-                    ));
-                  }
-                } catch (e) {
-                  if (ctx.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text('Алдаа: $e'),
-                      backgroundColor: AppColors.red,
-                      behavior: SnackBarBehavior.floating,
-                    ));
-                  }
-                }
-              },
-              child: const Text('Хадгалах'),
-            ),
-          ]),
-        ),
+          ).animate().fadeIn(duration: 400.ms),
+
+          const SizedBox(height: 10),
+
+          _MenuSection(items: [
+            if (auth.isStudent) _MenuItem(icon: Icons.article_outlined, iconColor: AppColors.primary, iconBg: AppColors.primaryLight, label: 'CV Maker', onTap: () => context.push('/cv')),
+            _MenuItem(icon: Icons.work_history_outlined, iconColor: AppColors.green, iconBg: AppColors.greenLight, label: mn ? 'Дадлагийн түүх' : 'Internship History', onTap: () => context.push('/internships')),
+            if (auth.isStudent) _MenuItem(icon: Icons.calendar_month_outlined, iconColor: AppColors.amber, iconBg: AppColors.amberLight, label: mn ? 'Хичээл хуваарь' : 'Class Schedule', onTap: () => context.push('/schedule')),
+          ]).animate().fadeIn(delay: 100.ms),
+
+          const SizedBox(height: 10),
+
+          _MenuSection(items: [
+            _MenuItem(icon: Icons.language_rounded, iconColor: AppColors.purple, iconBg: AppColors.purpleLight, label: mn ? 'Хэл' : 'Language', trailing: _LangBadge(isMN: mn), onTap: () => _showLangSheet(context, locale)),
+            _MenuItem(icon: Icons.lock_outline_rounded, iconColor: AppColors.muted, iconBg: AppColors.bg, label: mn ? 'Нууц үг солих' : 'Change Password', onTap: () => _showChangePassword(context, auth, mn)),
+            _MenuItem(icon: Icons.help_outline_rounded, iconColor: AppColors.primary, iconBg: AppColors.primaryLight, label: mn ? 'Тусламж' : 'Help & Support', onTap: () => _showHelp(context, mn)),
+          ]).animate().fadeIn(delay: 180.ms),
+
+          const SizedBox(height: 10),
+
+          _MenuSection(items: [
+            _MenuItem(icon: Icons.logout_rounded, iconColor: AppColors.red, iconBg: AppColors.redLight, label: mn ? 'Гарах' : 'Log Out', labelColor: AppColors.red, showArrow: false, onTap: () => _confirmLogout(context, auth, mn)),
+          ]).animate().fadeIn(delay: 260.ms),
+
+          const SizedBox(height: 24),
+          Text(mn ? 'Апп хувилбар 1.0.0' : 'App version 1.0.0', style: const TextStyle(fontSize: 11, color: AppColors.faint)),
+          const SizedBox(height: 32),
+        ]),
       ),
     );
   }
+
+  void _showLangSheet(BuildContext ctx, LocaleProvider locale) {
+    showModalBottomSheet(context: ctx, shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (sheetCtx) => Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Container(width: 44, height: 4, decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2))),
+        const SizedBox(height: 20),
+        const Icon(Icons.language_rounded, size: 36, color: AppColors.primary),
+        const SizedBox(height: 10),
+        const Text('Хэл сонгох / Choose Language', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 20),
+        Consumer<LocaleProvider>(builder: (_, loc, __) => Column(children: [
+          _LangOption(flag: '🇲🇳', name: 'Монгол', code: 'МН', selected: loc.isMN, onTap: () { loc.set(true); Navigator.pop(sheetCtx); }),
+          const SizedBox(height: 10),
+          _LangOption(flag: '🇬🇧', name: 'English', code: 'EN', selected: !loc.isMN, onTap: () { loc.set(false); Navigator.pop(sheetCtx); }),
+        ])),
+        const SizedBox(height: 16),
+      ])));
+  }
+
+  void _showEditProfile(BuildContext ctx, AuthProvider auth) {
+    showModalBottomSheet(context: ctx, isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) => _EditProfileSheet(auth: auth));
+  }
+
+  void _showSettingsSheet(BuildContext ctx, AuthProvider auth, LocaleProvider locale) {
+    showModalBottomSheet(context: ctx, shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (sheetCtx) => Consumer<LocaleProvider>(builder: (_, loc, __) => Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Container(width: 44, height: 4, decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2))),
+        const SizedBox(height: 20),
+        Row(children: [
+          const Text('Тохиргоо', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+          const Spacer(),
+          _LangBadge(isMN: loc.isMN),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: () { loc.toggle(); Navigator.pop(sheetCtx); },
+            child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(20)),
+              child: Text(loc.isMN ? 'EN болгох' : 'MN болгох',
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary))),
+          ),
+        ]),
+        const SizedBox(height: 20),
+      ]))));
+  }
+
+  void _showChangePassword(BuildContext ctx, AuthProvider auth, bool mn) {
+    final newPw = TextEditingController();
+    showModalBottomSheet(context: ctx, isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (sheetCtx) => StatefulBuilder(builder: (_, setState) {
+        bool saving = false;
+        return Padding(
+          padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(sheetCtx).viewInsets.bottom + 24),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Center(child: Container(width: 44, height: 4, decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)))),
+            const SizedBox(height: 20),
+            Text(mn ? 'Нууц үг солих' : 'Change Password', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 16),
+            FieldLabel(mn ? 'Шинэ нууц үг' : 'New password'),
+            TextField(controller: newPw, obscureText: true,
+              decoration: const InputDecoration(prefixIcon: Icon(Icons.lock_reset_rounded, size: 18, color: AppColors.faint))),
+            const SizedBox(height: 20),
+            PrimaryButton(label: mn ? 'Солих' : 'Update', loading: saving, onTap: () async {
+              if (newPw.text.length < 6) return;
+              setState(() => saving = true);
+              final ok = await auth.changePassword(newPw.text);
+              if (sheetCtx.mounted) {
+                Navigator.pop(sheetCtx);
+                ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                  content: Text(ok ? (mn ? 'Нууц үг шинэчлэгдлээ ✓' : 'Password updated ✓') : (auth.error ?? 'Алдаа')),
+                  backgroundColor: ok ? AppColors.green : AppColors.red,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ));
+              }
+            }),
+          ]),
+        );
+      }),
+    );
+  }
+
+  void _showHelp(BuildContext ctx, bool mn) => showModalBottomSheet(context: ctx,
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+    builder: (_) => Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [
+      Container(width: 44, height: 4, decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2))),
+      const SizedBox(height: 20),
+      const Icon(Icons.help_outline_rounded, size: 40, color: AppColors.primary),
+      const SizedBox(height: 12),
+      Text(mn ? 'Тусламж' : 'Help & Support', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+      const SizedBox(height: 10),
+      Text(mn ? 'Асуудал гарвал support@oyuntan.mn руу имэйл илгээнэ үү.' : 'For issues, email support@oyuntan.mn.',
+        style: const TextStyle(fontSize: 13, color: AppColors.muted, height: 1.6), textAlign: TextAlign.center),
+      const SizedBox(height: 24),
+    ])));
+
+  void _confirmLogout(BuildContext ctx, AuthProvider auth, bool mn) => showModalBottomSheet(context: ctx,
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+    builder: (_) => Padding(padding: const EdgeInsets.fromLTRB(24, 24, 24, 32), child: Column(mainAxisSize: MainAxisSize.min, children: [
+      Container(width: 44, height: 4, decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2))),
+      const SizedBox(height: 20),
+      Container(width: 56, height: 56, decoration: BoxDecoration(color: AppColors.redLight, shape: BoxShape.circle),
+        child: const Icon(Icons.logout_rounded, color: AppColors.red, size: 28)),
+      const SizedBox(height: 14),
+      Text(mn ? 'Гарах уу?' : 'Log out?', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+      const SizedBox(height: 6),
+      Text(mn ? 'Та апп-аас гарах гэж байна.' : 'You are about to log out.',
+        style: const TextStyle(fontSize: 13, color: AppColors.muted)),
+      const SizedBox(height: 24),
+      Row(children: [
+        Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(ctx), child: Text(mn ? 'Болих' : 'Cancel'))),
+        const SizedBox(width: 12),
+        Expanded(child: ElevatedButton(
+          onPressed: () async { Navigator.pop(ctx); await auth.logout(); },
+          style: ElevatedButton.styleFrom(backgroundColor: AppColors.red, foregroundColor: Colors.white, elevation: 0, minimumSize: const Size(0, 48), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+          child: Text(mn ? 'Гарах' : 'Log out'),
+        )),
+      ]),
+    ])));
 }
 
-class _ActionTile extends StatelessWidget {
+// ── Menu section ──────────────────────────────────────────────
+class _MenuSection extends StatelessWidget {
+  final List<_MenuItem> items;
+  const _MenuSection({required this.items});
+  @override
+  Widget build(BuildContext ctx) => Container(
+    margin: const EdgeInsets.symmetric(horizontal: 16),
+    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16),
+      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8)]),
+    child: Column(children: items.asMap().entries.map((e) => Column(children: [
+      e.value,
+      if (e.key != items.length - 1) const Divider(height: 1, indent: 56, endIndent: 16),
+    ])).toList()),
+  );
+}
+
+class _MenuItem extends StatelessWidget {
   final IconData icon;
   final Color iconColor, iconBg;
-  final String label, sub;
+  final String label;
+  final Color? labelColor;
+  final Widget? trailing;
+  final bool showArrow;
   final VoidCallback onTap;
-  final bool isLast;
-  const _ActionTile({
-    required this.icon, required this.iconColor, required this.iconBg,
-    required this.label, required this.sub, required this.onTap,
-    this.isLast = false,
-  });
+
+  const _MenuItem({required this.icon, required this.iconColor, required this.iconBg, required this.label, this.labelColor, this.trailing, this.showArrow = true, required this.onTap});
 
   @override
-  Widget build(BuildContext context) => Column(children: [
-    InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        child: Row(children: [
-          Container(
-            width: 40, height: 40,
-            decoration: BoxDecoration(
-              color: iconBg,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, size: 20, color: iconColor),
-          ),
-          const SizedBox(width: 12),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(label,
-                style: const TextStyle(
-                    fontSize: 13, fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary)),
-            Text(sub,
-                style: const TextStyle(
-                    fontSize: 11, color: AppColors.textSecondary)),
-          ])),
-          const Icon(Icons.chevron_right_rounded,
-              size: 20, color: AppColors.textTertiary),
-        ]),
-      ),
+  Widget build(BuildContext ctx) => GestureDetector(
+    onTap: onTap, behavior: HitTestBehavior.opaque,
+    child: Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+      child: Row(children: [
+        Container(width: 36, height: 36, decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(10)),
+          child: Icon(icon, size: 18, color: iconColor)),
+        const SizedBox(width: 14),
+        Expanded(child: Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: labelColor ?? AppColors.text))),
+        if (trailing != null) trailing!,
+        if (showArrow) ...[const SizedBox(width: 6), const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.faint)],
+      ]),
     ),
-    if (!isLast)
-      const Divider(height: 1, indent: 66),
-  ]);
+  );
 }
 
-// ── Calendar strip (reused from home) ────────────────────
-class _CalendarStrip extends StatelessWidget {
+class _LangBadge extends StatelessWidget {
+  final bool isMN;
+  const _LangBadge({required this.isMN});
+  @override Widget build(BuildContext ctx) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(8)),
+    child: Text(isMN ? '🇲🇳 МН' : '🇬🇧 EN', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.primary)),
+  );
+}
+
+class _LangOption extends StatelessWidget {
+  final String flag, name, code;
+  final bool selected;
+  final VoidCallback onTap;
+  const _LangOption({required this.flag, required this.name, required this.code, required this.selected, required this.onTap});
+  @override Widget build(BuildContext ctx) => GestureDetector(
+    onTap: onTap,
+    child: AnimatedContainer(duration: const Duration(milliseconds: 180),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(color: selected ? AppColors.primaryLight : AppColors.white,
+        borderRadius: BorderRadius.circular(12), border: Border.all(color: selected ? AppColors.primary : AppColors.border, width: selected ? 1.5 : 0.5)),
+      child: Row(children: [
+        Text(flag, style: const TextStyle(fontSize: 20)),
+        const SizedBox(width: 12),
+        Text(name, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: selected ? AppColors.primaryDark : AppColors.text)),
+        const Spacer(),
+        Text(code, style: TextStyle(fontSize: 12, color: selected ? AppColors.primary : AppColors.faint, fontWeight: FontWeight.w500)),
+        const SizedBox(width: 8),
+        Icon(selected ? Icons.check_circle_rounded : Icons.circle_outlined, size: 20, color: selected ? AppColors.primary : AppColors.faint),
+      ]),
+    ),
+  );
+}
+
+// ── Edit Profile Sheet ─────────────────────────────────────────
+class _EditProfileSheet extends StatefulWidget {
+  final AuthProvider auth;
+  const _EditProfileSheet({required this.auth});
+  @override State<_EditProfileSheet> createState() => _EditProfileSheetState();
+}
+class _EditProfileSheetState extends State<_EditProfileSheet> {
+  late final TextEditingController _phone, _name;
+  bool _saving = false;
+
+  @override void initState() {
+    super.initState();
+    final p = widget.auth.profile ?? {};
+    _phone = TextEditingController(text: p['phone'] as String? ?? '');
+    _name  = TextEditingController(text: widget.auth.displayName);
+  }
+
+  @override Widget build(BuildContext ctx) => Padding(
+    padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
+    child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Center(child: Container(width: 44, height: 4, decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)))),
+      const SizedBox(height: 20),
+      const Text('Профайл засах', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+      const SizedBox(height: 16),
+      const FieldLabel('Нэр'),
+      TextField(controller: _name, decoration: const InputDecoration(prefixIcon: Icon(Icons.person_outline, size: 18, color: AppColors.faint))),
+      const FieldLabel('Утасны дугаар'),
+      TextField(controller: _phone, keyboardType: TextInputType.phone,
+        decoration: const InputDecoration(prefixIcon: Icon(Icons.phone_outlined, size: 18, color: AppColors.faint), hintText: '+976...')),
+      const SizedBox(height: 20),
+      PrimaryButton(label: 'Хадгалах', loading: _saving, onTap: () async {
+        setState(() => _saving = true);
+        try {
+          final auth = widget.auth;
+          final uid  = auth.uid;
+          final path = auth.isStudent ? '/students/$uid' : '/companies/$uid';
+          final data = auth.isStudent
+              ? {'firstName': _name.text.trim(), 'phone': _phone.text.trim()}
+              : {'name': _name.text.trim(), 'phone': _phone.text.trim()};
+          await ApiClient.put(path, data);
+          await auth.refreshProfile();
+          if (ctx.mounted) {
+            Navigator.pop(ctx);
+            ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+              content: const Text('Профайл шинэчлэгдлээ ✓'),
+              backgroundColor: AppColors.green, behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ));
+          }
+        } catch (_) {}
+        finally { if (mounted) setState(() => _saving = false); }
+      }),
+    ]),
+  );
+
+  @override void dispose() { _phone.dispose(); _name.dispose(); super.dispose(); }
+}
+
+// ── NOTIFICATION SCREEN ───────────────────────────────────────
+class NotificationScreen extends StatefulWidget {
+  const NotificationScreen({super.key});
+  @override State<NotificationScreen> createState() => _NotifState();
+}
+class _NotifState extends State<NotificationScreen> {
+  late Future<List<Map<String, dynamic>>> _future;
+
+  @override void initState() { super.initState(); _load(); }
+  void _load() {
+    final uid = context.read<AuthProvider>().uid;
+    setState(() { _future = NotificationService().getNotifications(uid); });
+  }
+
   @override
   Widget build(BuildContext context) {
-    final today  = DateTime.now();
-    final monday = today.subtract(Duration(days: today.weekday - 1));
-    final days   = List.generate(7, (i) => monday.add(Duration(days: i)));
-    const labels = ['Да', 'Мя', 'Лх', 'Пү', 'Ба', 'Бя', 'Ня'];
-    return Row(
-      children: days.asMap().entries.map((e) {
-        final isToday = e.value.day == today.day &&
-            e.value.month == today.month;
-        return Expanded(
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            margin: const EdgeInsets.symmetric(horizontal: 2),
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            decoration: BoxDecoration(
-              color: isToday ? AppColors.primary : AppColors.white,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: isToday ? AppColors.primary : AppColors.border,
-                width: 0.8,
-              ),
-            ),
-            child: Column(children: [
-              Text(labels[e.key],
-                  style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w600,
-                      color: isToday
-                          ? Colors.white.withValues(alpha: 0.8)
-                          : AppColors.textTertiary)),
-              const SizedBox(height: 3),
-              Text('${e.value.day}',
-                  style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: isToday
-                          ? Colors.white
-                          : AppColors.textPrimary)),
-            ]),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Мэдэгдэл'),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await NotificationService().markAllRead();
+              _load();
+            },
+            child: const Text('Бүгдийг уншсан', style: TextStyle(fontSize: 12)),
           ),
-        );
-      }).toList(),
+        ],
+      ),
+      body: FutureBuilder<List<Map<String, dynamic>>>(
+        future: _future,
+        builder: (c, snap) {
+          if (snap.connectionState == ConnectionState.waiting)
+            return const Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2));
+          final notifs = snap.data ?? [];
+          if (notifs.isEmpty) {
+            return const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Icon(Icons.notifications_none_outlined, size: 48, color: AppColors.faint),
+              SizedBox(height: 12),
+              Text('Мэдэгдэл байхгүй', style: TextStyle(color: AppColors.muted)),
+            ]));
+          }
+          return RefreshIndicator(
+            onRefresh: () async => _load(),
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: notifs.length,
+              itemBuilder: (c, i) {
+                final d    = notifs[i];
+                final type = d['type'] as String? ?? '';
+                final isNew = !(d['read'] as bool? ?? false);
+                return Padding(padding: const EdgeInsets.only(bottom: 8), child: GestureDetector(
+                  onTap: () async {
+                    await NotificationService().markRead(d['id'] as String);
+                    _load();
+                  },
+                  child: AppCard(color: isNew ? AppColors.primaryLight : AppColors.white,
+                    child: Row(children: [
+                      Container(width: 36, height: 36,
+                        decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(10)),
+                        child: Icon(_typeIcon(type), size: 18, color: AppColors.white)),
+                      const SizedBox(width: 12),
+                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(_typeTitle(type), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                        Text(_typeSub(type),   style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+                      ])),
+                      if (isNew) Container(width: 8, height: 8, decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle)),
+                    ]),
+                  ),
+                ));
+              },
+            ),
+          );
+        },
+      ),
     );
   }
+
+  IconData _typeIcon(String t)  => switch(t) { 'new_application' => Icons.person_add_outlined, 'application_accepted' => Icons.check_circle_outline, _ => Icons.notifications_outlined };
+  String   _typeTitle(String t) => switch(t) { 'new_application' => 'Шинэ CV хүсэлт', 'application_accepted' => 'Хүсэлт хүлээн авлаа', _ => 'Мэдэгдэл' };
+  String   _typeSub(String t)   => switch(t) { 'new_application' => 'Таны зарт шинэ оюутан хүсэлт илгээлээ', 'application_accepted' => 'Компани таны хүсэлтийг хүлээн авлаа', _ => '' };
 }
 
-// ── Edit Tab ──────────────────────────────────────────────
-class _EditTab extends StatefulWidget {
-  final AuthProvider auth;
-  final Map<String, dynamic> profile;
-  final bool isStudent;
-  const _EditTab(
-      {required this.auth, required this.profile, required this.isStudent});
-  @override
-  State<_EditTab> createState() => _EditTabState();
+// ── Avatar Picker ─────────────────────────────────────────────
+class _AvatarPicker extends StatefulWidget {
+  final String name;
+  final int colorIndex;
+  final String uid;
+  const _AvatarPicker({required this.name, required this.colorIndex, required this.uid});
+  @override State<_AvatarPicker> createState() => _AvatarPickerState();
 }
 
-class _EditTabState extends State<_EditTab> {
-  late final Map<String, TextEditingController> _ctrls;
-  final _skillCtrl = TextEditingController();
-  late List<String> _skills;
-  bool _saving = false;
+class _AvatarPickerState extends State<_AvatarPicker> {
+  Uint8List? _bytes;
+  String get _prefKey => 'avatar_image_b64_${widget.uid}';
 
   @override
   void initState() {
     super.initState();
-    final p = widget.profile;
-    if (widget.isStudent) {
-      _ctrls = {
-        'firstName':  TextEditingController(text: p['firstName']  as String? ?? ''),
-        'lastName':   TextEditingController(text: p['lastName']   as String? ?? ''),
-        'university': TextEditingController(text: p['university'] as String? ?? ''),
-        'major':      TextEditingController(text: p['major']      as String? ?? ''),
-        'year':       TextEditingController(text: '${p['year'] ?? ''}'),
-        'phone':      TextEditingController(text: p['phone']      as String? ?? ''),
-        'gpa':        TextEditingController(text: p['gpa']        as String? ?? ''),
-        'bio':        TextEditingController(text: p['bio']        as String? ?? ''),
-      };
-      _skills = List<String>.from((p['skills'] as List?) ?? []);
-    } else {
-      _ctrls = {
-        'name':        TextEditingController(text: p['name']        as String? ?? ''),
-        'industry':    TextEditingController(text: p['industry']    as String? ?? ''),
-        'size':        TextEditingController(text: p['size']        as String? ?? ''),
-        'description': TextEditingController(text: p['description'] as String? ?? ''),
-        'website':     TextEditingController(text: p['website']     as String? ?? ''),
-        'phone':       TextEditingController(text: p['phone']       as String? ?? ''),
-      };
-      _skills = [];
+    _loadSaved();
+  }
+
+  Future<void> _loadSaved() async {
+    final prefs = await SharedPreferences.getInstance();
+    final b64 = prefs.getString(_prefKey);
+    if (b64 != null && mounted) {
+      setState(() => _bytes = base64Decode(b64));
     }
   }
 
-  @override
-  void dispose() {
-    for (final c in _ctrls.values) { c.dispose(); }
-    _skillCtrl.dispose();
-    super.dispose();
+  Future<void> _pick() async {
+    final xFile = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+      maxWidth: 512,
+    );
+    if (xFile == null) return;
+    final bytes = await xFile.readAsBytes();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_prefKey, base64Encode(bytes));
+    if (mounted) setState(() => _bytes = bytes);
   }
-
-  void _addSkill(String s) {
-    final sk = s.trim();
-    if (sk.isNotEmpty && !_skills.contains(sk)) setState(() => _skills.add(sk));
-    _skillCtrl.clear();
-  }
-
-  Future<void> _save() async {
-    setState(() => _saving = true);
-    final data = <String, dynamic>{
-      for (final e in _ctrls.entries) e.key: e.value.text.trim(),
-    };
-    if (widget.isStudent) {
-      data['year']   = int.tryParse(data['year'] as String? ?? '') ?? 1;
-      data['skills'] = List<String>.from(_skills);
-    }
-    final ok = await widget.auth.updateProfile(data);
-    if (!mounted) return;
-    setState(() => _saving = false);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(ok ? 'Профайл шинэчлэгдлээ ✓' : (widget.auth.error ?? 'Алдаа')),
-      backgroundColor: ok ? AppColors.teal : AppColors.red,
-      behavior: SnackBarBehavior.floating,
-    ));
-  }
-
-  Widget _field(String label, String key,
-      {TextInputType? type, int maxLines = 1, String? hint}) =>
-      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label,
-            style: const TextStyle(
-                fontSize: 12, fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary)),
-        const SizedBox(height: 6),
-        TextField(
-          controller: _ctrls[key],
-          keyboardType: type,
-          maxLines: maxLines,
-          decoration: InputDecoration(hintText: hint ?? label),
-        ),
-        const SizedBox(height: 14),
-      ]);
 
   @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        // Header
-        Container(
-          padding: const EdgeInsets.all(14),
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: _pick,
+    child: Stack(children: [
+      _bytes != null
+          ? CircleAvatar(radius: 42, backgroundImage: MemoryImage(_bytes!))
+          : AvatarCircle(name: widget.name, size: 84, colorIndex: widget.colorIndex),
+      Positioned(
+        right: 0, bottom: 0,
+        child: Container(
+          width: 28, height: 28,
           decoration: BoxDecoration(
-            color: AppColors.primaryLight,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.primaryMid, width: 0.8),
-          ),
-          child: const Row(children: [
-            Icon(Icons.info_outline_rounded,
-                size: 18, color: AppColors.primary),
-            SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                'Профайлаа бүрэн бөглөсөн оюутан 3 дахин илүү боломж авдаг',
-                style: TextStyle(
-                    fontSize: 12, color: AppColors.primary, height: 1.4),
-              ),
-            ),
-          ]),
+            color: AppColors.primary, shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: 2)),
+          child: const Icon(Icons.camera_alt_outlined, size: 14, color: Colors.white),
         ),
-        const SizedBox(height: 20),
-
-        if (widget.isStudent) ...[
-          _field('Нэр', 'firstName', hint: 'Жишээ: Мөнхбаяр'),
-          _field('Овог', 'lastName', hint: 'Жишээ: Баяр'),
-          _field('Их сургууль', 'university', hint: 'МУИС, ШУТИС...'),
-          _field('Мэргэжил', 'major', hint: 'Програм хангамж, Дизайн...'),
-          _field('Курс', 'year',
-              type: TextInputType.number, hint: '1, 2, 3, 4...'),
-          _field('Утас', 'phone',
-              type: TextInputType.phone, hint: '+976 xxxxxxxx'),
-          _field('GPA', 'gpa', hint: '3.5'),
-          _field('Товч танилцуулга', 'bio', maxLines: 4,
-              hint: 'Өөрийн талаар товч бичих...'),
-
-          // Skills
-          const Text('Ур чадвар',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary)),
-          const SizedBox(height: 6),
-          Row(children: [
-            Expanded(
-              child: TextField(
-                controller: _skillCtrl,
-                decoration: const InputDecoration(
-                    hintText: 'React, Flutter, Figma...'),
-                onSubmitted: _addSkill,
-              ),
-            ),
-            const SizedBox(width: 8),
-            GestureDetector(
-              onTap: () => _addSkill(_skillCtrl.text),
-              child: Container(
-                width: 44, height: 44,
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.add_rounded,
-                    color: Colors.white, size: 22),
-              ),
-            ),
-          ]),
-          if (_skills.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 6, runSpacing: 6,
-              children: _skills.map((s) => Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryLight,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                      color: AppColors.primaryMid, width: 0.8),
-                ),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Text(s,
-                      style: const TextStyle(
-                          fontSize: 11,
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w500)),
-                  const SizedBox(width: 4),
-                  GestureDetector(
-                    onTap: () => setState(() => _skills.remove(s)),
-                    child: const Icon(Icons.close_rounded,
-                        size: 13, color: AppColors.primary),
-                  ),
-                ]),
-              )).toList(),
-            ),
-          ],
-          const SizedBox(height: 20),
-        ] else ...[
-          _field('Компанийн нэр', 'name'),
-          _field('Салбар', 'industry', hint: 'IT, Санхүү, Маркетинг...'),
-          _field('Ажилтны тоо', 'size', hint: '10-50, 50-200...'),
-          _field('Утас', 'phone', type: TextInputType.phone),
-          _field('Вебсайт', 'website', hint: 'https://...'),
-          _field('Компанийн тухай', 'description', maxLines: 4),
-        ],
-
-        ElevatedButton(
-          onPressed: _saving ? null : _save,
-          child: _saving
-              ? const SizedBox(
-                  height: 20, width: 20,
-                  child: CircularProgressIndicator(
-                      color: Colors.white, strokeWidth: 2.5))
-              : const Text('Хадгалах'),
-        ),
-        const SizedBox(height: 16),
-        OutlinedButton.icon(
-          onPressed: () => _confirmLogout(context, widget.auth),
-          icon: const Icon(Icons.logout_rounded,
-              size: 18, color: AppColors.red),
-          label: const Text('Гарах',
-              style: TextStyle(
-                  color: AppColors.red, fontWeight: FontWeight.w600)),
-          style: OutlinedButton.styleFrom(
-            side: const BorderSide(color: AppColors.red),
-            foregroundColor: AppColors.red,
-          ),
-        ),
-        const SizedBox(height: 30),
-        const Center(
-          child: Text('Оюунтан v1.0.0',
-              style: TextStyle(
-                  fontSize: 11, color: AppColors.textTertiary)),
-        ),
-        const SizedBox(height: 8),
-      ],
-    );
-  }
-
-  void _confirmLogout(BuildContext context, AuthProvider auth) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16)),
-        title: const Text('Гарах', style: TextStyle(fontSize: 16)),
-        content: const Text('Та гарахдаа итгэлтэй байна уу?',
-            style: TextStyle(fontSize: 13)),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Болих')),
-          ElevatedButton(
-              onPressed: () { Navigator.pop(context); auth.logout(); },
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.red),
-              child: const Text('Гарах')),
-        ],
       ),
-    );
-  }
+    ]),
+  );
 }

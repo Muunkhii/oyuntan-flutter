@@ -7,7 +7,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../../theme/app_theme.dart';
 import '../../providers/auth_provider.dart';
-import '../../services/firebase_service.dart';
+import '../../services/api_service.dart';
 
 class CVScreen extends StatefulWidget {
   const CVScreen({super.key});
@@ -392,7 +392,7 @@ class _CVScreenState extends State<CVScreen> {
   Future<void> _generatePdf() async {
     setState(() => _generating = true);
     // Capture context-dependent values before any async gap
-    final uid = context.read<AuthProvider>().user?.uid ?? '';
+    final uid = context.read<AuthProvider>().uid;
     try {
       final doc  = await _buildPdf();
       final bytes = await doc.save();
@@ -400,7 +400,7 @@ class _CVScreenState extends State<CVScreen> {
       // Save to Firestore
       // uid already captured before async gap
       if (uid.isNotEmpty) {
-        await CVService().saveCV(uid, {
+        await CVService().save(uid, {
           'name':        _nameCtrl.text,
           'email':       _emailCtrl.text,
           'phone':       _phoneCtrl.text,

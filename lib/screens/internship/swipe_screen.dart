@@ -1,9 +1,8 @@
 // lib/screens/internship/swipe_screen.dart
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../theme/app_theme.dart';
-import '../../services/firebase_service.dart';
+import '../../services/api_service.dart';
 
 class SwipeScreen extends StatefulWidget {
   final String postId;
@@ -14,7 +13,7 @@ class SwipeScreen extends StatefulWidget {
 
 class _SwipeScreenState extends State<SwipeScreen> {
   final _service = InternshipService();
-  List<DocumentSnapshot> _candidates = [];
+  List<Map<String, dynamic>> _candidates = [];
   int _idx = 0;
   bool _loading = true;
   Offset _dragOffset = Offset.zero;
@@ -27,8 +26,8 @@ class _SwipeScreenState extends State<SwipeScreen> {
   }
 
   Future<void> _loadCandidates() async {
-    final snap = await _service.getCandidates(widget.postId).first;
-    setState(() { _candidates = snap.docs; _loading = false; });
+    final list = await _service.getCandidates(widget.postId);
+    setState(() { _candidates = list; _loading = false; });
   }
 
   void _accept() => _swipe('accepted');
@@ -39,20 +38,20 @@ class _SwipeScreenState extends State<SwipeScreen> {
     final app = _candidates[_idx];
     try {
       if (status == 'accepted') {
-        final post = await DB.posts.doc(widget.postId).get();
+        final post = await ApiClient.get('/posts/${widget.postId}') as Map<String, dynamic>;
         await _service.acceptApplication(
-          applicationId: app.id,
-          studentId: app['studentId'],
-          postId: widget.postId,
-          durationDays: (post['durationDays'] as num?)?.toInt() ?? 30,
-          companyId: post['companyId'] as String? ?? '',
+          applicationId: app['id'] as String,
+          studentId:     app['student_id'] as String,
+          postId:        widget.postId,
+          durationDays:  (post['duration_days'] as num?)?.toInt() ?? 30,
         );
       } else {
-        await DB.applications.doc(app.id).update({'status': 'rejected'});
+        await _service.rejectApplication(app['id'] as String);
       }
     } catch (_) {}
     setState(() {
       _dragOffset = Offset.zero;
+      _dragging   = false;
       _idx++;
     });
   }
@@ -134,22 +133,21 @@ class _SwipeScreenState extends State<SwipeScreen> {
     );
   }
 
-  Widget _buildCard(DocumentSnapshot app, double scale, bool showOverlay) {
-    final data = app.data() as Map<String, dynamic>;
-    final studentId = data['studentId'] as String;
+  Widget _buildCard(Map<String, dynamic> app, double scale, bool showOverlay) {
+    final studentId = app['student_id'] as String? ?? '';
 
-    return FutureBuilder<DocumentSnapshot>(
-      future: DB.students.doc(studentId).get(),
+    return FutureBuilder<Map<String, dynamic>>(
+      future: ApiClient.get('/students/$studentId').then((v) => v as Map<String, dynamic>),
       builder: (_, snap) {
         if (!snap.hasData) return const SizedBox(height: 420,
           child: Center(child: CircularProgressIndicator(strokeWidth: 2)));
-        final s = snap.data!.data() as Map<String, dynamic>? ?? {};
-        final name = '${s['firstName'] ?? ''} ${s['lastName'] ?? ''}';
-        final university = s['university'] ?? '';
-        final major = s['major'] ?? '';
-        final year = s['year'] ?? '';
-        final skills = (s['skills'] as List?)?.cast<String>() ?? [];
-        final bio = s['bio'] ?? '';
+        final s = snap.data!;
+        final name       = '${s['first_name'] ?? ''} ${s['last_name'] ?? ''}'.trim();
+        final university = s['university'] as String? ?? '';
+        final major      = s['major']      as String? ?? '';
+        final year       = s['year']       ?? '';
+        final skills     = (s['skills']    as List?)?.cast<String>() ?? [];
+        final bio        = s['bio']        as String? ?? '';
 
         return Transform.scale(
           scale: scale,
@@ -186,8 +184,8 @@ class _SwipeScreenState extends State<SwipeScreen> {
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.5)),
               ],
-              // Psych
-              if (s['psychProfile'] != null) ...[
+              // Psych profile
+              if (s['psych_profile'] != null) ...[
                 const SizedBox(height: 12),
                 Container(
                   width: double.infinity,
@@ -197,13 +195,13 @@ class _SwipeScreenState extends State<SwipeScreen> {
                     const Text('СЭТГЭЛЗҮЙН ТЕСТ', style: TextStyle(
                       fontSize: 9, fontWeight: FontWeight.w600, color: AppColors.textTertiary, letterSpacing: 0.5)),
                     const SizedBox(height: 4),
-                    Text((s['psychProfile'] as Map).values.take(3).join(' · '),
+                    Text((s['psych_profile'] as Map).values.take(3).join(' · '),
                       style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
                   ]),
                 ),
               ],
               const SizedBox(height: 8),
-              Text('← шударж үзэх →', style: const TextStyle(fontSize: 10, color: AppColors.textTertiary)),
+              const Text('← шударж үзэх →', style: TextStyle(fontSize: 10, color: AppColors.textTertiary)),
             ]),
           ),
         );

@@ -1,235 +1,373 @@
 // lib/screens/home/company_home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:go_router/go_router.dart';
 import '../../theme/app_theme.dart';
 import '../../providers/auth_provider.dart';
-import '../../services/firebase_service.dart';
-import '../../widgets/home_widgets.dart';
+import '../../providers/locale_provider.dart';
+import '../../services/api_service.dart';
 
-class CompanyHomeScreen extends StatelessWidget {
+class CompanyHomeScreen extends StatefulWidget {
   const CompanyHomeScreen({super.key});
+  @override State<CompanyHomeScreen> createState() => _CompanyHomeState();
+}
+
+class _CompanyHomeState extends State<CompanyHomeScreen> {
+  late Future<List<Map<String, dynamic>>> _postsFuture;
+  late String _uid;
+
+  @override
+  void initState() {
+    super.initState();
+    _uid = context.read<AuthProvider>().uid;
+    _load();
+  }
+
+  void _load() => setState(() => _postsFuture = InternshipService().getCompanyPosts(_uid));
 
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    final uid  = auth.user?.uid ?? '';
+    final mn   = context.watch<LocaleProvider>().isMN;
     final h    = DateTime.now().hour;
-    final greeting =
-        h < 12 ? 'Өглөөний мэнд' : h < 17 ? 'Өдрийн мэнд' : 'Оройн мэнд';
+    final greeting = h < 12 ? (mn ? 'Өглөөний мэнд' : 'Good morning')
+                   : h < 17 ? (mn ? 'Өдрийн мэнд'   : 'Good afternoon')
+                   :           (mn ? 'Оройн мэнд'    : 'Good evening');
 
     return Scaffold(
       backgroundColor: AppColors.bg,
-      appBar: AppBar(
-        backgroundColor: AppColors.bg,
-        automaticallyImplyLeading: false,
-        title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(greeting,
-              style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w400)),
-          Text(auth.displayName.isEmpty ? 'Компани' : auth.displayName,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
-        ]),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined, size: 22),
-            onPressed: () => context.push('/company/notifications'),
-          ),
-        ],
-      ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: InternshipService().getCompanyPosts(uid),
+      body: FutureBuilder<List<Map<String, dynamic>>>(
+        future: _postsFuture,
         builder: (context, snap) {
-          if (snap.connectionState == ConnectionState.waiting) {
-            return const Center(
-                child: CircularProgressIndicator(color: AppColors.black, strokeWidth: 2));
-          }
-          final posts = snap.data?.docs ?? [];
+          final loading = snap.connectionState == ConnectionState.waiting;
+          final posts   = snap.data ?? [];
+          final total   = posts.fold<int>(0, (s, d) => s + ((d['applicant_count'] as num?)?.toInt() ?? 0));
+          final active  = posts.where((d) => d['is_active'] == true).length;
 
-          // Stats
-          final totalApplicants = posts.fold<int>(
-              0, (s, d) => s + ((d['applicantCount'] as num?)?.toInt() ?? 0));
-
-          return ListView(
-            padding: EdgeInsets.zero,
-            children: [
-              const WeatherDateHeader(),
-              const SizedBox(height: 8),
-              const AdCarousel(ads: companyAds),
-              const SizedBox(height: 16),
-
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: GridView.count(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  childAspectRatio: 2.2,
-                  children: [
-                    _StatCard('Нийт зар',    '${posts.length}',     AppColors.blueLight,   AppColors.blue),
-                    _StatCard('Хүсэлт',      '$totalApplicants',    AppColors.tealLight,   AppColors.teal),
-                    _StatCard('Идэвхтэй',
-                      '${posts.where((d) => d['isActive'] == true).length}',
-                      AppColors.purpleLight, AppColors.purple),
-                    _StatCard('Дадлагажигч', '—',                   AppColors.amberLight,  AppColors.amber),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const SectionLabel('Миний зарууд'),
-                    TextButton(
-                      onPressed: () => _showCreatePost(context, uid),
-                      style: TextButton.styleFrom(
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          padding: EdgeInsets.zero),
-                      child: const Text('+ Зар нэмэх',
-                          style: TextStyle(
-                              fontSize: 12, color: AppColors.textPrimary,
-                              fontWeight: FontWeight.w500)),
+          return RefreshIndicator(
+            color: AppColors.teal,
+            onRefresh: () async => _load(),
+            child: CustomScrollView(
+              slivers: [
+                // ── Teal gradient header ──────────────────────
+                SliverToBoxAdapter(
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFF0E7490), Color(0xFF06B6D4)],
+                      ),
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(28),
+                        bottomRight: Radius.circular(28),
+                      ),
                     ),
-                  ],
-                ),
-              ),
+                    child: SafeArea(
+                      bottom: false,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Row(children: [
+                            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              Text(greeting,
+                                style: const TextStyle(fontSize: 12, color: Colors.white70)),
+                              const SizedBox(height: 2),
+                              Text(
+                                auth.displayName.isEmpty ? (mn ? 'Компани' : 'Company') : auth.displayName,
+                                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white),
+                              ),
+                            ])),
+                            GestureDetector(
+                              onTap: () => context.push('/company/notif'),
+                              child: Container(
+                                width: 40, height: 40,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.18),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(Icons.notifications_outlined, color: Colors.white, size: 22),
+                              ),
+                            ),
+                          ]),
 
-              if (posts.isEmpty)
-                const _EmptyPosts()
-              else
-                ...posts.map((doc) => Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-                  child: _PostCard(doc: doc),
-                )),
-              const SizedBox(height: 16),
-            ],
+                          const SizedBox(height: 20),
+
+                          // 3-column stats row
+                          if (loading)
+                            const Center(child: SizedBox(width: 22, height: 22,
+                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)))
+                          else
+                            Row(children: [
+                              _StatPill(mn ? 'Нийт зар' : 'Posts',      '${posts.length}', Icons.description_outlined),
+                              const SizedBox(width: 10),
+                              _StatPill(mn ? 'Хүсэлт'  : 'Applicants', '$total',           Icons.people_outline),
+                              const SizedBox(width: 10),
+                              _StatPill(mn ? 'Идэвхтэй': 'Active',      '$active',          Icons.check_circle_outline),
+                            ]),
+                        ]),
+                      ),
+                    ),
+                  ),
+                ),
+
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 22, 16, 0),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+
+                      // ── Quick actions ───────────────────────
+                      Row(children: [
+                        _QuickAction(
+                          icon: Icons.add_circle_outline,
+                          label: mn ? 'Зар нэмэх' : 'New post',
+                          color: AppColors.teal,
+                          onTap: () => _showCreatePost(context),
+                        ),
+                        const SizedBox(width: 12),
+                        _QuickAction(
+                          icon: Icons.people_alt_outlined,
+                          label: mn ? 'Дадлагчид' : 'Interns',
+                          color: AppColors.primary,
+                          onTap: () => context.go('/company/interns'),
+                        ),
+                        const SizedBox(width: 12),
+                        _QuickAction(
+                          icon: Icons.person_outline,
+                          label: mn ? 'Профайл' : 'Profile',
+                          color: AppColors.purple,
+                          onTap: () => context.go('/company/profile'),
+                        ),
+                      ]),
+
+                      const SizedBox(height: 24),
+
+                      // ── Posts section ───────────────────────
+                      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                        SectionLabel(mn ? 'Миний зарууд' : 'My posts'),
+                        GestureDetector(
+                          onTap: () => _showCreatePost(context),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: AppColors.teal,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(mainAxisSize: MainAxisSize.min, children: [
+                              const Icon(Icons.add, color: Colors.white, size: 14),
+                              const SizedBox(width: 4),
+                              Text(mn ? 'Нэмэх' : 'Add',
+                                style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w600)),
+                            ]),
+                          ),
+                        ),
+                      ]),
+
+                      const SizedBox(height: 10),
+
+                      if (loading)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 32),
+                          child: Center(child: CircularProgressIndicator(color: AppColors.teal, strokeWidth: 2)),
+                        )
+                      else if (posts.isEmpty)
+                        const _EmptyPosts()
+                      else
+                        ...posts.map((d) => Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: _PostCard(data: d),
+                        )),
+
+                      const SizedBox(height: 24),
+                    ]),
+                  ),
+                ),
+              ],
+            ),
           );
         },
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showCreatePost(context, uid),
-        backgroundColor: AppColors.black,
-        foregroundColor: AppColors.white,
-        icon: const Icon(Icons.add, size: 20),
-        label: const Text('Зар нэмэх',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-      ),
     );
   }
 
-  void _showCreatePost(BuildContext context, String uid) {
+  void _showCreatePost(BuildContext context) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => _CreatePostSheet(companyId: uid),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => _CreatePostSheet(onSaved: _load),
     );
   }
 }
 
-class _StatCard extends StatelessWidget {
+// ── Stat Pill ──────────────────────────────────────────────────
+class _StatPill extends StatelessWidget {
   final String label, value;
-  final Color bg, fg;
-  const _StatCard(this.label, this.value, this.bg, this.fg);
+  final IconData icon;
+  const _StatPill(this.label, this.value, this.icon);
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(12),
-    decoration:
-        BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
-    child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center, children: [
-      Text(label, style: TextStyle(fontSize: 10, color: fg.withValues(alpha: 0.8))),
-      const SizedBox(height: 4),
-      Text(value,
-          style: TextStyle(
-              fontSize: 22, fontWeight: FontWeight.w500, color: fg)),
-    ]),
-  );
-}
-
-class _PostCard extends StatelessWidget {
-  final QueryDocumentSnapshot doc;
-  const _PostCard({required this.doc});
-
-  @override
-  Widget build(BuildContext context) {
-    final data     = doc.data() as Map<String, dynamic>;
-    final title    = data['title']          as String? ?? 'Зар';
-    final count    = (data['applicantCount'] as num?)?.toInt() ?? 0;
-    final isActive = data['isActive']       as bool?   ?? false;
-    final duration = (data['durationDays']  as num?)?.toInt() ?? 0;
-
-    return AppCard(
-      onTap: () => context.push('/company/swipe/${doc.id}'),
-      padding: const EdgeInsets.all(14),
-      child: Row(children: [
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-            const SizedBox(height: 4),
-            Row(children: [
-              Text('$count хүсэлт',
-                  style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-              const SizedBox(width: 10),
-              Text('$duration өдөр',
-                  style: const TextStyle(fontSize: 11, color: AppColors.textTertiary)),
-            ]),
-          ]),
-        ),
-        AppTag(
-          isActive ? 'Идэвхтэй' : 'Хаалттай',
-          bg: isActive ? AppColors.tealLight : AppColors.bg,
-          textColor: isActive ? AppColors.teal : AppColors.textSecondary,
-        ),
-        const SizedBox(width: 8),
-        const Icon(Icons.chevron_right, size: 18, color: AppColors.textTertiary),
-      ]),
-    );
-  }
-}
-
-class _EmptyPosts extends StatelessWidget {
-  const _EmptyPosts();
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 40),
-    child: Center(
+  Widget build(BuildContext context) => Expanded(
+    child: Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+      ),
       child: Column(children: [
-        Container(
-          width: 56, height: 56,
-          decoration: BoxDecoration(
-              color: AppColors.bg, borderRadius: BorderRadius.circular(28)),
-          child: const Icon(Icons.work_outline, size: 28, color: AppColors.textSecondary),
-        ),
-        const SizedBox(height: 12),
-        const Text('Зар байхгүй байна',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
-        const SizedBox(height: 4),
-        const Text('Шинэ зар нэмж оюутан хайж эхэлнэ үү',
-            style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+        Icon(icon, color: Colors.white, size: 18),
+        const SizedBox(height: 6),
+        Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
+        const SizedBox(height: 2),
+        Text(label, style: const TextStyle(fontSize: 10, color: Colors.white70), textAlign: TextAlign.center),
       ]),
     ),
   );
 }
 
-// ── Create Post Sheet (improved) ──────────────────────
-class _CreatePostSheet extends StatefulWidget {
-  final String companyId;
-  const _CreatePostSheet({required this.companyId});
+// ── Quick Action ───────────────────────────────────────────────
+class _QuickAction extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+  const _QuickAction({required this.icon, required this.label, required this.color, required this.onTap});
+
   @override
-  State<_CreatePostSheet> createState() => _CreatePostSheetState();
+  Widget build(BuildContext context) => Expanded(
+    child: GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
+        ),
+        child: Column(children: [
+          Icon(icon, color: color, size: 22),
+          const SizedBox(height: 6),
+          Text(label, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
+        ]),
+      ),
+    ),
+  );
+}
+
+// ── Post Card ─────────────────────────────────────────────────
+class _PostCard extends StatelessWidget {
+  final Map<String, dynamic> data;
+  const _PostCard({required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    final title    = data['title']           as String? ?? 'Зар';
+    final count    = (data['applicant_count'] as num?)?.toInt() ?? 0;
+    final isActive = data['is_active']       as bool?   ?? false;
+    final duration = (data['duration_days']  as num?)?.toInt() ?? 0;
+    final location = data['location']        as String? ?? '';
+
+    return GestureDetector(
+      onTap: () => context.push('/company/swipe/${data['id']}'),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border, width: 0.5),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8)],
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Expanded(
+              child: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.text)),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: isActive ? AppColors.tealLight : AppColors.bg,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                isActive ? 'Идэвхтэй' : 'Хаалттай',
+                style: TextStyle(
+                  fontSize: 10, fontWeight: FontWeight.w600,
+                  color: isActive ? AppColors.teal : AppColors.muted,
+                ),
+              ),
+            ),
+          ]),
+
+          if (location.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Row(children: [
+              const Icon(Icons.location_on_outlined, size: 12, color: AppColors.faint),
+              const SizedBox(width: 4),
+              Text(location, style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+            ]),
+          ],
+
+          const SizedBox(height: 12),
+          const Divider(height: 1),
+          const SizedBox(height: 12),
+
+          Row(children: [
+            _MetricChip(Icons.people_outline, '$count хүсэлт', AppColors.primary),
+            const SizedBox(width: 10),
+            _MetricChip(Icons.schedule_outlined, '$duration өдөр', AppColors.purple),
+            const Spacer(),
+            const Icon(Icons.chevron_right, size: 18, color: AppColors.faint),
+          ]),
+        ]),
+      ),
+    );
+  }
+}
+
+class _MetricChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  const _MetricChip(this.icon, this.label, this.color);
+
+  @override
+  Widget build(BuildContext context) => Row(mainAxisSize: MainAxisSize.min, children: [
+    Icon(icon, size: 13, color: color),
+    const SizedBox(width: 4),
+    Text(label, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w500)),
+  ]);
+}
+
+// ── Empty Posts ────────────────────────────────────────────────
+class _EmptyPosts extends StatelessWidget {
+  const _EmptyPosts();
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 40),
+    child: Center(child: Column(children: [
+      Container(
+        width: 64, height: 64,
+        decoration: BoxDecoration(
+          color: AppColors.tealLight,
+          borderRadius: BorderRadius.circular(32),
+        ),
+        child: const Icon(Icons.work_outline, size: 30, color: AppColors.teal),
+      ),
+      const SizedBox(height: 14),
+      const Text('Зар байхгүй байна', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+      const SizedBox(height: 6),
+      const Text('Шинэ зар нэмж оюутан хайж эхэлнэ үү',
+          style: TextStyle(fontSize: 12, color: AppColors.muted)),
+    ])),
+  );
+}
+
+// ── Create Post Sheet ──────────────────────────────────────────
+class _CreatePostSheet extends StatefulWidget {
+  final VoidCallback onSaved;
+  const _CreatePostSheet({required this.onSaved});
+  @override State<_CreatePostSheet> createState() => _CreatePostSheetState();
 }
 
 class _CreatePostSheetState extends State<_CreatePostSheet> {
@@ -239,120 +377,67 @@ class _CreatePostSheetState extends State<_CreatePostSheet> {
   final _locationCtrl = TextEditingController();
   final _salaryCtrl   = TextEditingController();
   final _skillCtrl    = TextEditingController();
-  bool _saving = false;
-  bool _isFreelance = false;
+  bool _saving        = false;
   final List<String> _skills = [];
 
   void _addSkill(String s) {
     final sk = s.trim();
-    if (sk.isNotEmpty && !_skills.contains(sk)) {
-      setState(() => _skills.add(sk));
-    }
+    if (sk.isNotEmpty && !_skills.contains(sk)) setState(() => _skills.add(sk));
     _skillCtrl.clear();
   }
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(
-          20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 24),
+      padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 24),
       child: SingleChildScrollView(
-        child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-          const Text('Шинэ зар',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w500)),
-          const SizedBox(height: 12),
-
-          // Type toggle
-          Container(
-            padding: const EdgeInsets.all(3),
-            decoration: BoxDecoration(
-                color: AppColors.bg, borderRadius: BorderRadius.circular(10)),
-            child: Row(children: [
-              _SheetSeg('Дадлага', !_isFreelance,
-                  () => setState(() => _isFreelance = false)),
-              _SheetSeg('Freelance', _isFreelance,
-                  () => setState(() => _isFreelance = true)),
-            ]),
-          ),
-          const SizedBox(height: 14),
-
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Container(
+              width: 4, height: 20,
+              decoration: BoxDecoration(color: AppColors.teal, borderRadius: BorderRadius.circular(2)),
+            ),
+            const SizedBox(width: 10),
+            const Text('Шинэ зар', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
+          ]),
+          const SizedBox(height: 16),
           const _L('Ажлын нэр'),
-          TextField(
-              controller: _titleCtrl,
-              decoration: InputDecoration(
-                  hintText: _isFreelance
-                      ? 'Жишээ нь: Лого дизайн'
-                      : 'Жишээ нь: Frontend Intern')),
+          TextField(controller: _titleCtrl, decoration: const InputDecoration(hintText: 'Жишээ нь: Frontend Intern')),
           const SizedBox(height: 10),
-
           const _L('Хугацаа (өдөр)'),
-          TextField(
-              controller: _daysCtrl,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(hintText: '30')),
+          TextField(controller: _daysCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(hintText: '30')),
           const SizedBox(height: 10),
-
           const _L('Байршил'),
-          TextField(
-              controller: _locationCtrl,
-              decoration:
-                  const InputDecoration(hintText: 'Улаанбаатар / Онлайн')),
+          TextField(controller: _locationCtrl, decoration: const InputDecoration(hintText: 'Улаанбаатар / Онлайн')),
           const SizedBox(height: 10),
-
-          const _L('Цалин / Урамшуулал (заавал биш)'),
-          TextField(
-              controller: _salaryCtrl,
-              decoration:
-                  const InputDecoration(hintText: 'Сараар / Дүн дээр')),
+          const _L('Цалин (заавал биш)'),
+          TextField(controller: _salaryCtrl, decoration: const InputDecoration(hintText: 'Сараар / Дүн дээр')),
           const SizedBox(height: 10),
-
           const _L('Тайлбар'),
-          TextField(
-              controller: _descCtrl,
-              maxLines: 3,
-              decoration: const InputDecoration(
-                  hintText: 'Ажлын агуулга, шаардлага...')),
+          TextField(controller: _descCtrl, maxLines: 3, decoration: const InputDecoration(hintText: 'Ажлын агуулга, шаардлага...')),
           const SizedBox(height: 10),
-
           const _L('Шаардлагатай ур чадвар'),
           Row(children: [
-            Expanded(
-              child: TextField(
-                  controller: _skillCtrl,
-                  decoration: const InputDecoration(hintText: 'React, Figma...'),
-                  onSubmitted: _addSkill),
-            ),
+            Expanded(child: TextField(controller: _skillCtrl, decoration: const InputDecoration(hintText: 'React, Figma...'), onSubmitted: _addSkill)),
             const SizedBox(width: 6),
-            IconButton(
-              onPressed: () => _addSkill(_skillCtrl.text),
-              icon: const Icon(Icons.add_circle_outline, color: AppColors.black),
-            ),
+            IconButton(onPressed: () => _addSkill(_skillCtrl.text), icon: const Icon(Icons.add_circle_outline, color: AppColors.teal)),
           ]),
           if (_skills.isNotEmpty) ...[
             const SizedBox(height: 8),
-            Wrap(
-              spacing: 6, runSpacing: 6,
-              children: _skills.map((s) => Chip(
-                label: Text(s, style: const TextStyle(fontSize: 11)),
-                deleteIcon: const Icon(Icons.close, size: 14),
-                onDeleted: () => setState(() => _skills.remove(s)),
-                padding: EdgeInsets.zero,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              )).toList(),
-            ),
+            Wrap(spacing: 6, runSpacing: 6, children: _skills.map((s) => Chip(
+              label: Text(s, style: const TextStyle(fontSize: 11)),
+              deleteIcon: const Icon(Icons.close, size: 14),
+              onDeleted: () => setState(() => _skills.remove(s)),
+              padding: EdgeInsets.zero,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            )).toList()),
           ],
           const SizedBox(height: 20),
-
           ElevatedButton(
             onPressed: _saving ? null : _save,
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.teal),
             child: _saving
-                ? const SizedBox(
-                    height: 20, width: 20,
-                    child: CircularProgressIndicator(
-                        color: AppColors.white, strokeWidth: 2))
+                ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: AppColors.white, strokeWidth: 2))
                 : const Text('Нийтлэх'),
           ),
         ]),
@@ -364,81 +449,35 @@ class _CreatePostSheetState extends State<_CreatePostSheet> {
     if (_titleCtrl.text.trim().isEmpty) return;
     setState(() => _saving = true);
     try {
-      final data = {
-        'title':       _titleCtrl.text.trim(),
-        'description': _descCtrl.text.trim(),
-        'companyId':   widget.companyId,
-        'durationDays': int.tryParse(_daysCtrl.text) ?? 30,
-        'location':    _locationCtrl.text.trim(),
-        'salary':      _salaryCtrl.text.trim(),
-        'skills':      List<String>.from(_skills),
-        'majors':      <String>[],
-        'isActive':    true,
-      };
-      if (_isFreelance) {
-        await DB.freelance.add({
-          ...data,
-          'category': 'Бусад',
-          'budget':   _salaryCtrl.text.trim(),
-          'deadline': '${int.tryParse(_daysCtrl.text) ?? 14} хоног',
-        });
-      } else {
-        await InternshipService().createPost(data);
-      }
+      await InternshipService().createPost({
+        'title':          _titleCtrl.text.trim(),
+        'description':    _descCtrl.text.trim(),
+        'durationDays':   int.tryParse(_daysCtrl.text) ?? 30,
+        'location':       _locationCtrl.text.trim(),
+        'salary':         _salaryCtrl.text.trim(),
+        'requiredSkills': List<String>.from(_skills),
+      });
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('Зар амжилттай нийтлэгдлээ'),
-        backgroundColor: AppColors.teal,
-        behavior: SnackBarBehavior.floating,
+        backgroundColor: AppColors.teal, behavior: SnackBarBehavior.floating,
       ));
       Navigator.pop(context);
-    } catch (e) {
+      widget.onSaved();
+    } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Алдаа: ${e.toString().replaceAll('Exception: ', '')}'),
-        backgroundColor: AppColors.red,
-        behavior: SnackBarBehavior.floating,
+        content: Text(e.message), backgroundColor: AppColors.red, behavior: SnackBarBehavior.floating,
       ));
     }
   }
 
   @override
   void dispose() {
-    _titleCtrl.dispose(); _descCtrl.dispose(); _daysCtrl.dispose();
-    _locationCtrl.dispose(); _salaryCtrl.dispose(); _skillCtrl.dispose();
+    for (final c in [_titleCtrl, _descCtrl, _daysCtrl, _locationCtrl, _salaryCtrl, _skillCtrl]) { c.dispose(); }
     super.dispose();
   }
-}
-
-class _SheetSeg extends StatelessWidget {
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
-  const _SheetSeg(this.label, this.active, this.onTap);
-  @override
-  Widget build(BuildContext context) => Expanded(
-    child: GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(vertical: 9),
-        decoration: BoxDecoration(
-          color: active ? AppColors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-          border: active
-              ? Border.all(color: AppColors.border, width: 0.5)
-              : null,
-        ),
-        child: Text(label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-                fontSize: 13,
-                fontWeight: active ? FontWeight.w500 : FontWeight.w400,
-                color: active ? AppColors.textPrimary : AppColors.textSecondary)),
-      ),
-    ),
-  );
 }
 
 class _L extends StatelessWidget {
@@ -447,8 +486,6 @@ class _L extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: 6),
-    child: Text(text,
-        style:
-            const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+    child: Text(text, style: const TextStyle(fontSize: 11, color: AppColors.muted)),
   );
 }

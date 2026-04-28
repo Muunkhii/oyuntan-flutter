@@ -1,10 +1,8 @@
 // lib/screens/diary/diary_screen.dart
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../theme/app_theme.dart';
-import '../../providers/auth_provider.dart';
-import '../../services/firebase_service.dart';
+import '../../services/api_service.dart';
 
 class DiaryScreen extends StatefulWidget {
   final String internshipId;
@@ -43,8 +41,8 @@ class _DiaryScreenState extends State<DiaryScreen> {
   }
 
   Future<void> _loadDayNumber() async {
-    final doc = await DiaryService().getEntries(widget.internshipId).first;
-    if (mounted) setState(() => _dayNumber = doc.docs.length + 1);
+    final entries = await DiaryService().getEntries(widget.internshipId);
+    if (mounted) setState(() => _dayNumber = entries.length + 1);
   }
 
   @override
@@ -58,8 +56,8 @@ class _DiaryScreenState extends State<DiaryScreen> {
             onPressed: _saving ? null : _save,
             child: _saving
                 ? const SizedBox(width: 18, height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.black))
-                : const Text('Хадгалах', style: TextStyle(fontWeight: FontWeight.w500, color: AppColors.black)),
+                    child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary))
+                : const Text('Хадгалах', style: TextStyle(fontWeight: FontWeight.w500, color: AppColors.primary)),
           )
         ],
       ),
@@ -100,7 +98,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
                   child: Text(m.$1, style: TextStyle(
                     fontSize: 12,
                     fontWeight: selected ? FontWeight.w500 : FontWeight.w400,
-                    color: selected ? m.$3 : AppColors.textSecondary,
+                    color: selected ? m.$3 : AppColors.muted,
                   )),
                 ),
               );
@@ -154,10 +152,8 @@ class _DiaryScreenState extends State<DiaryScreen> {
 
     setState(() => _saving = true);
     try {
-      final uid = context.read<AuthProvider>().user!.uid;
       await _diary.addEntry(
         internshipId: widget.internshipId,
-        studentId: uid,
         dayNumber: _dayNumber,
         workDone: _workCtrl.text.trim(),
         mood: _mood!,
@@ -192,6 +188,6 @@ class _SLabel extends StatelessWidget {
     padding: const EdgeInsets.only(bottom: 10),
     child: Text(text, style: const TextStyle(
       fontSize: 10, fontWeight: FontWeight.w600,
-      color: AppColors.textSecondary, letterSpacing: 0.6)),
+      color: AppColors.muted, letterSpacing: 0.6)),
   );
 }

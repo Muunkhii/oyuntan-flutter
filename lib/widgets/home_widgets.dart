@@ -198,12 +198,27 @@ class _AdCarouselState extends State<AdCarousel> {
             width:  _page == i ? 14 : 5,
             height: 5,
             decoration: BoxDecoration(
-              color: _page == i ? AppColors.textPrimary : AppColors.border,
+              color: _page == i ? AppColors.primary : AppColors.border,
               borderRadius: BorderRadius.circular(3),
             ),
           ))),
     ]);
   }
+}
+
+// ── AppTag ────────────────────────────────────────────
+class AppTag extends StatelessWidget {
+  final String label;
+  final Color bg;
+  final Color textColor;
+  const AppTag(this.label, {super.key, required this.bg, required this.textColor});
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+    child: Text(label,
+        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: textColor)),
+  );
 }
 
 // Default ads for student home
