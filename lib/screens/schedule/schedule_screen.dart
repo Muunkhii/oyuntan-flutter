@@ -1,9 +1,11 @@
 // lib/screens/schedule/schedule_screen.dart
-// Хуваарь нь хэрэглэгчийн утсанд локалд хадгалагдана (SharedPreferences)
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../theme/app_theme.dart';
+import '../../providers/auth_provider.dart';
+import '../../services/api_service.dart';
 
 class ScheduleScreen extends StatefulWidget {
   const ScheduleScreen({super.key});
@@ -13,6 +15,7 @@ class ScheduleScreen extends StatefulWidget {
 class _SchState extends State<ScheduleScreen> {
   int _day = DateTime.now().weekday - 1;
   List<Map<String, dynamic>> _all = [];
+  bool _syncing = false;
 
   static const _days      = ['Даваа','Мягмар','Лхагва','Пүрэв','Баасан','Бямба','Ням'];
   static const _daysShort = ['Да','Мя','Лх','Пү','Ба','Бя','Ня'];
@@ -21,14 +24,42 @@ class _SchState extends State<ScheduleScreen> {
   void initState() { super.initState(); _load(); }
 
   Future<void> _load() async {
+    // 1. Try backend first
+    final uid = context.read<AuthProvider>().uid;
+    if (uid.isNotEmpty) {
+      try {
+        final list = await ScheduleService().getSchedule(uid);
+        if (mounted && list.isNotEmpty) {
+          setState(() => _all = list);
+          await _saveLocal(); // cache locally
+          return;
+        }
+      } catch (_) {}
+    }
+    // 2. Fallback to local cache
     final prefs = await SharedPreferences.getInstance();
     final raw   = prefs.getString('schedule') ?? '[]';
-    setState(() => _all = (jsonDecode(raw) as List).cast<Map<String, dynamic>>());
+    if (mounted) setState(() => _all = (jsonDecode(raw) as List).cast<Map<String, dynamic>>());
   }
 
-  Future<void> _save() async {
+  Future<void> _saveLocal() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('schedule', jsonEncode(_all));
+  }
+
+  Future<void> _syncBackend() async {
+    final uid = context.read<AuthProvider>().uid;
+    if (uid.isEmpty) return;
+    setState(() => _syncing = true);
+    try {
+      await ScheduleService().saveSchedule(_all);
+    } catch (_) {}
+    if (mounted) setState(() => _syncing = false);
+  }
+
+  Future<void> _persist() async {
+    await _saveLocal();
+    await _syncBackend();
   }
 
   List<Map<String, dynamic>> get _dayEntries {
@@ -44,6 +75,18 @@ class _SchState extends State<ScheduleScreen> {
       appBar: AppBar(
         title: const Text('Хичээлийн хуваарь'),
         actions: [
+          if (_syncing)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 14),
+              child: SizedBox(width: 18, height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary)),
+            )
+          else
+            IconButton(
+              icon: const Icon(Icons.cloud_done_outlined, size: 22),
+              tooltip: 'Синк хийх',
+              onPressed: _syncBackend,
+            ),
           IconButton(
             icon: const Icon(Icons.add_rounded, size: 24),
             onPressed: () => _showAddSheet(context),
@@ -83,7 +126,7 @@ class _SchState extends State<ScheduleScreen> {
           child: Row(children: [
             Text(_days[_day], style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
             const Spacer(),
-            Text('${DateTime.now().day}-р өдөр', style: const TextStyle(fontSize: 12, color: AppColors.faint)),
+            Text('${_dayEntries.length} хичээл', style: const TextStyle(fontSize: 12, color: AppColors.faint)),
           ]),
         ),
 
@@ -102,7 +145,7 @@ class _SchState extends State<ScheduleScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
                   itemCount: _dayEntries.length,
                   itemBuilder: (c, i) {
-                    final d   = _dayEntries[i];
+                    final d     = _dayEntries[i];
                     final color = _subjectColor(d['subject'] as String? ?? '');
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 10),
@@ -117,7 +160,7 @@ class _SchState extends State<ScheduleScreen> {
                         ),
                         onDismissed: (_) async {
                           setState(() => _all.remove(d));
-                          await _save();
+                          await _persist();
                         },
                         child: GestureDetector(
                           onLongPress: () => _showAddSheet(context, existing: d),
@@ -132,11 +175,17 @@ class _SchState extends State<ScheduleScreen> {
                                 const SizedBox(width: 4),
                                 Text('${_fmt(d['startHour'], d['startMin'])} — ${_fmt(d['endHour'], d['endMin'])}',
                                   style: const TextStyle(fontSize: 11, color: AppColors.muted)),
-                                if (d['room'] != null) ...[
+                                if (d['room'] != null && (d['room'] as String).isNotEmpty) ...[
                                   const SizedBox(width: 10),
                                   const Icon(Icons.location_on_outlined, size: 12, color: AppColors.faint),
                                   const SizedBox(width: 2),
                                   Text(d['room'] as String, style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+                                ],
+                                if (d['teacher'] != null && (d['teacher'] as String).isNotEmpty) ...[
+                                  const SizedBox(width: 10),
+                                  const Icon(Icons.person_outline, size: 12, color: AppColors.faint),
+                                  const SizedBox(width: 2),
+                                  Text(d['teacher'] as String, style: const TextStyle(fontSize: 11, color: AppColors.muted)),
                                 ],
                               ]),
                             ])),
@@ -180,11 +229,11 @@ class _SchState extends State<ScheduleScreen> {
             if (existing != null) _all.remove(existing);
             _all.add(data);
           });
-          await _save();
+          await _persist();
         },
         onDelete: existing == null ? null : () async {
           setState(() => _all.remove(existing));
-          await _save();
+          await _persist();
         },
       ),
     );

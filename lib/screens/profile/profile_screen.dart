@@ -32,17 +32,19 @@ class _RState extends State<ReviewScreen> {
   ];
 
   @override Widget build(BuildContext c) {
-    if (_done) return Scaffold(body: SafeArea(child: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-      Container(width: 64, height: 64,
-        decoration: const BoxDecoration(color: AppColors.greenLight, shape: BoxShape.circle),
-        child: const Icon(Icons.check, size: 32, color: AppColors.green)),
-      const SizedBox(height: 16),
-      const Text('Үнэлгээ илгээгдлээ', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
-      const SizedBox(height: 8),
-      const Text('Таны сэтгэгдэл бусад оюутнуудад тусална', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: AppColors.muted)),
-      const SizedBox(height: 24),
-      TextButton(onPressed: () => c.go('/home'), child: const Text('Нүүр хуудас руу →')),
-    ]))));
+    if (_done) {
+      return Scaffold(body: SafeArea(child: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Container(width: 64, height: 64,
+          decoration: const BoxDecoration(color: AppColors.greenLight, shape: BoxShape.circle),
+          child: const Icon(Icons.check, size: 32, color: AppColors.green)),
+        const SizedBox(height: 16),
+        const Text('Үнэлгээ илгээгдлээ', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 8),
+        const Text('Таны сэтгэгдэл бусад оюутнуудад тусална', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: AppColors.muted)),
+        const SizedBox(height: 24),
+        TextButton(onPressed: () => c.go('/home'), child: const Text('Нүүр хуудас руу →')),
+      ]))));
+    }
 
     return Scaffold(
       appBar: AppBar(title: const Text('Компани үнэлэх')),
@@ -118,10 +120,10 @@ class _RState extends State<ReviewScreen> {
       );
       setState(() => _done = true);
     } on ApiException catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message), backgroundColor: AppColors.red));
+      if (mounted) { ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message), backgroundColor: AppColors.red)); }
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) { setState(() => _saving = false); }
     }
   }
 
@@ -426,55 +428,93 @@ class _EditProfileSheet extends StatefulWidget {
   @override State<_EditProfileSheet> createState() => _EditProfileSheetState();
 }
 class _EditProfileSheetState extends State<_EditProfileSheet> {
-  late final TextEditingController _phone, _name;
+  late final TextEditingController _name, _phone, _desc, _location, _website;
   bool _saving = false;
 
   @override void initState() {
     super.initState();
     final p = widget.auth.profile ?? {};
-    _phone = TextEditingController(text: p['phone'] as String? ?? '');
-    _name  = TextEditingController(text: widget.auth.displayName);
+    _name     = TextEditingController(text: widget.auth.displayName);
+    _phone    = TextEditingController(text: p['phone']       as String? ?? '');
+    _desc     = TextEditingController(text: p['description'] as String? ?? '');
+    _location = TextEditingController(text: p['location']    as String? ?? '');
+    _website  = TextEditingController(text: p['website']     as String? ?? '');
   }
 
-  @override Widget build(BuildContext ctx) => Padding(
-    padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
-    child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Center(child: Container(width: 44, height: 4, decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)))),
-      const SizedBox(height: 20),
-      const Text('Профайл засах', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
-      const SizedBox(height: 16),
-      const FieldLabel('Нэр'),
-      TextField(controller: _name, decoration: const InputDecoration(prefixIcon: Icon(Icons.person_outline, size: 18, color: AppColors.faint))),
-      const FieldLabel('Утасны дугаар'),
-      TextField(controller: _phone, keyboardType: TextInputType.phone,
-        decoration: const InputDecoration(prefixIcon: Icon(Icons.phone_outlined, size: 18, color: AppColors.faint), hintText: '+976...')),
-      const SizedBox(height: 20),
-      PrimaryButton(label: 'Хадгалах', loading: _saving, onTap: () async {
-        setState(() => _saving = true);
-        try {
-          final auth = widget.auth;
-          final uid  = auth.uid;
-          final path = auth.isStudent ? '/students/$uid' : '/companies/$uid';
-          final data = auth.isStudent
-              ? {'firstName': _name.text.trim(), 'phone': _phone.text.trim()}
-              : {'name': _name.text.trim(), 'phone': _phone.text.trim()};
-          await ApiClient.put(path, data);
-          await auth.refreshProfile();
-          if (ctx.mounted) {
-            Navigator.pop(ctx);
-            ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
-              content: const Text('Профайл шинэчлэгдлээ ✓'),
-              backgroundColor: AppColors.green, behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ));
-          }
-        } catch (_) {}
-        finally { if (mounted) setState(() => _saving = false); }
-      }),
-    ]),
-  );
+  @override Widget build(BuildContext ctx) {
+    final isCompany = widget.auth.isCompany;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
+      child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Center(child: Container(width: 44, height: 4, decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)))),
+        const SizedBox(height: 20),
+        Text(isCompany ? 'Компани засах' : 'Профайл засах',
+          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 16),
 
-  @override void dispose() { _phone.dispose(); _name.dispose(); super.dispose(); }
+        FieldLabel(isCompany ? 'Компанийн нэр' : 'Нэр'),
+        TextField(controller: _name,
+          decoration: const InputDecoration(prefixIcon: Icon(Icons.business_outlined, size: 18, color: AppColors.faint))),
+
+        const FieldLabel('Утасны дугаар'),
+        TextField(controller: _phone, keyboardType: TextInputType.phone,
+          decoration: const InputDecoration(prefixIcon: Icon(Icons.phone_outlined, size: 18, color: AppColors.faint), hintText: '+976...')),
+
+        if (isCompany) ...[
+          const FieldLabel('Компанийн танилцуулга'),
+          TextField(controller: _desc, maxLines: 4,
+            decoration: const InputDecoration(hintText: 'Компани болон дадлагын хөтөлбөрийн тухай...')),
+
+          const FieldLabel('Байршил'),
+          TextField(controller: _location,
+            decoration: const InputDecoration(prefixIcon: Icon(Icons.location_on_outlined, size: 18, color: AppColors.faint), hintText: 'Улаанбаатар, Монгол')),
+
+          const FieldLabel('Вэбсайт'),
+          TextField(controller: _website, keyboardType: TextInputType.url,
+            decoration: const InputDecoration(prefixIcon: Icon(Icons.language_outlined, size: 18, color: AppColors.faint), hintText: 'https://...')),
+        ],
+
+        const SizedBox(height: 24),
+        PrimaryButton(label: 'Хадгалах', loading: _saving, onTap: _save),
+      ])),
+    );
+  }
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    try {
+      final auth = widget.auth;
+      final uid  = auth.uid;
+      final Map<String, dynamic> data;
+      if (auth.isStudent) {
+        data = {'firstName': _name.text.trim(), 'phone': _phone.text.trim()};
+      } else {
+        data = {
+          'name':        _name.text.trim(),
+          'phone':       _phone.text.trim(),
+          'description': _desc.text.trim(),
+          'location':    _location.text.trim(),
+          'website':     _website.text.trim(),
+        };
+      }
+      await ApiClient.put(auth.isStudent ? '/students/$uid' : '/companies/$uid', data);
+      await auth.refreshProfile();
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: const Text('Профайл шинэчлэгдлээ ✓'),
+          backgroundColor: AppColors.green, behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ));
+      }
+    } catch (_) {}
+    finally { if (mounted) setState(() => _saving = false); }
+  }
+
+  @override void dispose() {
+    for (final c in [_name, _phone, _desc, _location, _website]) { c.dispose(); }
+    super.dispose();
+  }
 }
 
 // ── NOTIFICATION SCREEN ───────────────────────────────────────
@@ -509,8 +549,9 @@ class _NotifState extends State<NotificationScreen> {
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: _future,
         builder: (c, snap) {
-          if (snap.connectionState == ConnectionState.waiting)
+          if (snap.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2));
+          }
           final notifs = snap.data ?? [];
           if (notifs.isEmpty) {
             return const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [

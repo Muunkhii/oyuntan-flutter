@@ -89,7 +89,7 @@ class _State extends State<RegisterStudentScreen> {
     if (ok && mounted) context.go('/welcome?type=student');
   }
 
-  @override void dispose() { for(final c in [_fn,_ln,_ph,_em,_pw,_un,_mj]) c.dispose(); super.dispose(); }
+  @override void dispose() { for(final c in [_fn,_ln,_ph,_em,_pw,_un,_mj]) { c.dispose(); } super.dispose(); }
 }
 
 // ── COMPANY REGISTER ──────────────────────────────────────────
@@ -163,7 +163,7 @@ class _CState extends State<RegisterCompanyScreen> {
     if (ok && mounted) context.go('/welcome?type=company');
   }
 
-  @override void dispose() { for(final c in [_name,_desc,_phone,_em,_pw,_industry]) c.dispose(); super.dispose(); }
+  @override void dispose() { for(final c in [_name,_desc,_phone,_em,_pw,_industry]) { c.dispose(); } super.dispose(); }
 }
 
 // ── PSYCH TEST ────────────────────────────────────────────────

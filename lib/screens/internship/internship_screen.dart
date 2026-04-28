@@ -54,30 +54,50 @@ class _FeedTabState extends State<_FeedTab> {
   @override void initState() { super.initState(); _load(); }
   void _load() { setState(() { _future = InternshipService().getFeed(); }); }
 
+  void _showPostDetail(Map<String, dynamic> d) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _PostDetailSheet(post: d, onApply: () => _showApplySheet(d)),
+    );
+  }
+
+  void _showApplySheet(Map<String, dynamic> d) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _ApplySheet(post: d),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<Map<String, dynamic>>>(
       future: _future,
       builder: (c, snap) {
-        if (snap.connectionState == ConnectionState.waiting)
+        if (snap.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2));
-        if (snap.hasError)
+        }
+        if (snap.hasError) {
           return Center(child: Text(snap.error.toString(), style: const TextStyle(color: AppColors.muted)));
+        }
         final posts = snap.data ?? [];
-        if (posts.isEmpty)
+        if (posts.isEmpty) {
           return const Center(child: Text('Зар байхгүй байна', style: TextStyle(color: AppColors.muted)));
+        }
         return RefreshIndicator(
           onRefresh: () async => _load(),
           child: ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: posts.length,
             itemBuilder: (c, i) {
-              final d  = posts[i];
-              final id = d['id'] as String;
+              final d = posts[i];
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: AppCard(
-                  onTap: () {},
+                  onTap: () => _showPostDetail(d),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
                       Expanded(child: Text(d['title'] ?? '', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600))),
@@ -108,22 +128,7 @@ class _FeedTabState extends State<_FeedTab> {
                     SizedBox(
                       width: double.infinity, height: 38,
                       child: ElevatedButton(
-                        onPressed: () async {
-                          final auth = c.read<AuthProvider>();
-                          try {
-                            await InternshipService().apply(
-                              postId: id,
-                              companyId: d['company_id'] as String? ?? '',
-                            );
-                            if (c.mounted) ScaffoldMessenger.of(c).showSnackBar(
-                              const SnackBar(content: Text('Хүсэлт илгээгдлээ ✓'),
-                                backgroundColor: AppColors.green, behavior: SnackBarBehavior.floating));
-                          } on ApiException catch (e) {
-                            if (c.mounted) ScaffoldMessenger.of(c).showSnackBar(
-                              SnackBar(content: Text(e.message),
-                                backgroundColor: AppColors.red, behavior: SnackBarBehavior.floating));
-                          }
-                        },
+                        onPressed: () => _showApplySheet(d),
                         child: const Text('Хүсэлт илгээх'),
                       ),
                     ),
@@ -157,8 +162,9 @@ class _MyTabState extends State<_MyInternshipsTab> {
     return FutureBuilder<List<Map<String, dynamic>>>(
       future: _future,
       builder: (c, snap) {
-        if (snap.connectionState == ConnectionState.waiting)
+        if (snap.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2));
+        }
         final interns = snap.data ?? [];
         if (interns.isEmpty) {
           return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -286,9 +292,9 @@ class _SState extends State<SwipeScreen> {
                       child: GestureDetector(
                         onPanUpdate: (d) => setState(() => _drag += d.delta),
                         onPanEnd: (_) {
-                          if (_drag.dx > 80) _swipe('accepted');
-                          else if (_drag.dx < -80) _swipe('rejected');
-                          else setState(() => _drag = Offset.zero);
+                          if (_drag.dx > 80) { _swipe('accepted'); }
+                          else if (_drag.dx < -80) { _swipe('rejected'); }
+                          else { setState(() => _drag = Offset.zero); }
                         },
                         child: Transform.translate(
                           offset: Offset(_drag.dx, _drag.dy * 0.2),
@@ -435,7 +441,379 @@ class _CPState extends State<CreatePostScreen> {
   }
 
   @override void dispose() {
-    for (final c in [_title, _desc, _loc, _dur, _salary, _skillCtrl]) c.dispose();
+    for (final c in [_title, _desc, _loc, _dur, _salary, _skillCtrl]) { c.dispose(); }
     super.dispose();
   }
+}
+
+// ── Post Detail Sheet ─────────────────────────────────────────
+class _PostDetailSheet extends StatefulWidget {
+  final Map<String, dynamic> post;
+  final VoidCallback onApply;
+  const _PostDetailSheet({required this.post, required this.onApply});
+  @override State<_PostDetailSheet> createState() => _PostDetailSheetState();
+}
+class _PostDetailSheetState extends State<_PostDetailSheet> {
+  late Future<Map<String, dynamic>> _future;
+
+  @override void initState() {
+    super.initState();
+    _future = ApiClient.get('/posts/${widget.post['id']}').then((r) => r as Map<String, dynamic>);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.92,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      builder: (_, ctrl) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(children: [
+          const SizedBox(height: 12),
+          Container(width: 40, height: 4,
+            decoration: BoxDecoration(color: AppColors.faint, borderRadius: BorderRadius.circular(2))),
+          const SizedBox(height: 12),
+          Expanded(
+            child: FutureBuilder<Map<String, dynamic>>(
+              future: _future,
+              builder: (c, snap) {
+                if (snap.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2));
+                }
+                if (snap.hasError) {
+                  return Center(child: Text(snap.error.toString(), style: const TextStyle(color: AppColors.muted)));
+                }
+                return _buildContent(snap.data!, ctrl);
+              },
+            ),
+          ),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+              child: SizedBox(
+                width: double.infinity, height: 46,
+                child: ElevatedButton(
+                  onPressed: () { Navigator.pop(context); widget.onApply(); },
+                  child: const Text('Хүсэлт илгээх'),
+                ),
+              ),
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  Widget _buildContent(Map<String, dynamic> d, ScrollController ctrl) {
+    final skills   = (d['required_skills'] as List?)?.cast<String>() ?? [];
+    final avgScore = (d['avg_score'] as num?)?.toDouble();
+    return ListView(
+      controller: ctrl,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          d['logo_url'] != null
+              ? ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.network(d['logo_url'] as String, width: 56, height: 56, fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _CompanyAvatar(size: 56, name: d['company_name'] as String?)))
+              : _CompanyAvatar(size: 56, name: d['company_name'] as String?),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(d['company_name'] ?? '', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            if (d['industry'] != null)
+              Text(d['industry'] as String, style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+            if (avgScore != null)
+              Row(children: [
+                const Icon(Icons.star_rounded, size: 14, color: Colors.amber),
+                const SizedBox(width: 3),
+                Text(avgScore.toStringAsFixed(1), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                const SizedBox(width: 4),
+                Text('(${d['review_count'] ?? 0} үнэлгээ)', style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+              ]),
+          ])),
+        ]),
+        const SizedBox(height: 6),
+        Wrap(spacing: 16, children: [
+          if (d['company_location'] != null)
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              const Icon(Icons.location_on_outlined, size: 13, color: AppColors.muted),
+              const SizedBox(width: 3),
+              Text(d['company_location'] as String, style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+            ]),
+          if (d['website'] != null)
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              const Icon(Icons.language_outlined, size: 13, color: AppColors.muted),
+              const SizedBox(width: 3),
+              Text(d['website'] as String, style: const TextStyle(fontSize: 12, color: AppColors.primary)),
+            ]),
+        ]),
+        if ((d['company_description'] as String?)?.isNotEmpty == true) ...[
+          const SizedBox(height: 8),
+          Text(d['company_description'] as String, style: const TextStyle(fontSize: 12, color: AppColors.muted, height: 1.5)),
+        ],
+        const Divider(height: 28),
+        Text(d['title'] ?? '', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 8),
+        Wrap(spacing: 16, runSpacing: 4, children: [
+          Row(mainAxisSize: MainAxisSize.min, children: [
+            const Icon(Icons.location_on_outlined, size: 13, color: AppColors.muted),
+            const SizedBox(width: 3),
+            Text(d['location'] ?? '', style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+          ]),
+          Row(mainAxisSize: MainAxisSize.min, children: [
+            const Icon(Icons.calendar_today_outlined, size: 13, color: AppColors.muted),
+            const SizedBox(width: 3),
+            Text('${d['duration_days'] ?? 0} хоног', style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+          ]),
+          if ((d['salary'] as String?)?.isNotEmpty == true)
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              const Icon(Icons.payments_outlined, size: 13, color: AppColors.muted),
+              const SizedBox(width: 3),
+              Text(d['salary'] as String, style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+            ]),
+        ]),
+        if ((d['description'] as String?)?.isNotEmpty == true) ...[
+          const SizedBox(height: 14),
+          const Text('Тайлбар', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 6),
+          Text(d['description'] as String, style: const TextStyle(fontSize: 13, color: AppColors.muted, height: 1.5)),
+        ],
+        if (skills.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          const Text('Шаардлагатай мэдлэг', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          Wrap(spacing: 8, runSpacing: 6,
+            children: skills.map((s) => Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(8)),
+              child: Text(s, style: const TextStyle(fontSize: 12, color: AppColors.primaryDark)),
+            )).toList()),
+        ],
+        const SizedBox(height: 80),
+      ],
+    );
+  }
+}
+
+// ── Apply Sheet ───────────────────────────────────────────────
+class _ApplySheet extends StatefulWidget {
+  final Map<String, dynamic> post;
+  const _ApplySheet({required this.post});
+  @override State<_ApplySheet> createState() => _ApplySheetState();
+}
+class _ApplySheetState extends State<_ApplySheet> {
+  final _msgCtrl = TextEditingController();
+  bool _loading = false;
+  bool _done = false;
+  late Future<Map<String, dynamic>?> _cvFuture;
+  late String _uid;
+
+  @override void initState() {
+    super.initState();
+    _uid = context.read<AuthProvider>().uid;
+    _cvFuture = CVService().get(_uid);
+  }
+
+  @override void dispose() { _msgCtrl.dispose(); super.dispose(); }
+
+  Future<void> _submit() async {
+    setState(() => _loading = true);
+    try {
+      await InternshipService().apply(
+        postId: widget.post['id'] as String,
+        companyId: widget.post['company_id'] as String? ?? '',
+        message: _msgCtrl.text.trim().isNotEmpty ? _msgCtrl.text.trim() : null,
+      );
+      if (mounted) setState(() { _done = true; _loading = false; });
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() => _loading = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(e.message),
+          backgroundColor: AppColors.red,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final profile = context.read<AuthProvider>().profile;
+    final name = '${profile?['first_name'] ?? ''} ${profile?['last_name'] ?? ''}'.trim();
+    return DraggableScrollableSheet(
+      initialChildSize: 0.85,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      builder: (_, ctrl) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(children: [
+          const SizedBox(height: 12),
+          Container(width: 40, height: 4,
+            decoration: BoxDecoration(color: AppColors.faint, borderRadius: BorderRadius.circular(2))),
+          const SizedBox(height: 16),
+          if (_done) _buildSuccess() else _buildForm(profile, name, ctrl),
+        ]),
+      ),
+    );
+  }
+
+  Widget _buildSuccess() => Expanded(
+    child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+      const Icon(Icons.check_circle_rounded, size: 72, color: AppColors.green),
+      const SizedBox(height: 16),
+      const Text('Хүсэлт амжилттай илгээгдлээ!',
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+      const SizedBox(height: 8),
+      const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 32),
+        child: Text('Компани таны мэдээлэлтэй танилцсаны дараа хариу өгнө.',
+          style: TextStyle(fontSize: 13, color: AppColors.muted),
+          textAlign: TextAlign.center),
+      ),
+      const SizedBox(height: 32),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: SizedBox(
+          width: double.infinity, height: 46,
+          child: OutlinedButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Хаах'),
+          ),
+        ),
+      ),
+    ]),
+  );
+
+  Widget _buildForm(Map<String, dynamic>? profile, String name, ScrollController ctrl) => Expanded(
+    child: Column(children: [
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Хүсэлт илгээх', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 2),
+          Text(widget.post['title'] ?? '', style: const TextStyle(fontSize: 13, color: AppColors.muted)),
+        ]),
+      ),
+      const Divider(height: 20),
+      Expanded(
+        child: ListView(
+          controller: ctrl,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          children: [
+            Row(children: [
+              AvatarCircle(name: name, size: 40),
+              const SizedBox(width: 12),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                if (profile?['university'] != null)
+                  Text('${profile!['university']} · ${profile['major'] ?? ''}',
+                    style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+              ])),
+            ]),
+            const SizedBox(height: 16),
+            FutureBuilder<Map<String, dynamic>?>(
+              future: _cvFuture,
+              builder: (c, snap) {
+                if (snap.connectionState == ConnectionState.waiting) {
+                  return const SizedBox(height: 40,
+                    child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary)));
+                }
+                final cv = snap.data;
+                if (cv == null) {
+                  return Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF3E0),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFFFCC80)),
+                    ),
+                    child: const Row(children: [
+                      Icon(Icons.warning_amber_rounded, color: Color(0xFFE65100), size: 18),
+                      SizedBox(width: 8),
+                      Expanded(child: Text(
+                        'CV оруулаагүй байна. CV хэсгийг бөглөсний дараа хүсэлт илгээвэл компани таны мэдээллийг харах боломжтой.',
+                        style: TextStyle(fontSize: 12, color: Color(0xFF7A4500)))),
+                    ]),
+                  );
+                }
+                final skills = (cv['skills'] as List?)?.cast<String>() ?? [];
+                return Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(color: AppColors.greenLight, borderRadius: BorderRadius.circular(10)),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    const Row(children: [
+                      Icon(Icons.attach_file_rounded, size: 16, color: AppColors.green),
+                      SizedBox(width: 6),
+                      Text('CV хавсаргагдсан',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.green)),
+                    ]),
+                    if (skills.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Wrap(spacing: 6, runSpacing: 4,
+                        children: skills.take(5).map((s) => Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6)),
+                          child: Text(s, style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+                        )).toList()),
+                    ],
+                  ]),
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+            const Text('Нэмэлт мессеж (заавал биш)',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 6),
+            TextField(
+              controller: _msgCtrl,
+              maxLines: 4,
+              decoration: const InputDecoration(hintText: 'Компанид хэлэхийг хүсэж буй зүйлс...'),
+            ),
+            const SizedBox(height: 80),
+          ],
+        ),
+      ),
+      SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+          child: SizedBox(
+            width: double.infinity, height: 46,
+            child: ElevatedButton(
+              onPressed: _loading ? null : _submit,
+              child: _loading
+                ? const SizedBox(width: 22, height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : const Text('Хүсэлт илгээх'),
+            ),
+          ),
+        ),
+      ),
+    ]),
+  );
+}
+
+// ── Company Avatar helper ─────────────────────────────────────
+class _CompanyAvatar extends StatelessWidget {
+  final double size;
+  final String? name;
+  const _CompanyAvatar({this.size = 48, this.name});
+  @override
+  Widget build(BuildContext context) => Container(
+    width: size, height: size,
+    decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(10)),
+    alignment: Alignment.center,
+    child: Text(
+      name?.isNotEmpty == true ? name![0].toUpperCase() : '?',
+      style: TextStyle(fontSize: size * 0.35, fontWeight: FontWeight.w700, color: AppColors.primaryDark),
+    ),
+  );
 }

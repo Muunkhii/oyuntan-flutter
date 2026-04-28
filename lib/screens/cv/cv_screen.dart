@@ -36,17 +36,21 @@ class _CVScreenState extends State<CVScreen> {
   final List<_ExpItem> _experiences = [];
 
   bool _generating = false;
+  bool _saving     = false;
 
   @override
   void initState() {
     super.initState();
     _prefill();
+    _loadSaved();
   }
 
   void _prefill() {
     final auth    = context.read<AuthProvider>();
     final profile = auth.profile ?? {};
-    final name    = '${profile['firstName'] ?? ''} ${profile['lastName'] ?? ''}'.trim();
+    final fn   = profile['first_name']  ?? profile['firstName']  ?? '';
+    final ln   = profile['last_name']   ?? profile['lastName']   ?? '';
+    final name = '$fn $ln'.trim();
     _nameCtrl.text    = name;
     _emailCtrl.text   = profile['email']      as String? ?? '';
     _phoneCtrl.text   = profile['phone']      as String? ?? '';
@@ -55,8 +59,114 @@ class _CVScreenState extends State<CVScreen> {
     _gpaCtrl.text     = profile['gpa']        as String? ?? '';
     _yearCtrl.text    = '${profile['year'] ?? ''}';
     _summaryCtrl.text = profile['bio']        as String? ?? '';
-    _skills.addAll(List<String>.from((profile['skills'] as List?) ?? []));
-    _languages.addAll(['Монгол', 'Англи']);
+    final profileSkills = List<String>.from((profile['skills'] as List?) ?? []);
+    if (profileSkills.isNotEmpty) _skills.addAll(profileSkills);
+    if (_languages.isEmpty) _languages.addAll(['Монгол', 'Англи']);
+  }
+
+  Future<void> _loadSaved() async {
+    final uid = context.read<AuthProvider>().uid;
+    if (uid.isEmpty) return;
+    try {
+      final cv = await CVService().get(uid);
+      if (cv != null && mounted) _applyCv(cv);
+    } catch (_) {}
+  }
+
+  void _applyCv(Map<String, dynamic> cv) {
+    void maybe(TextEditingController c, dynamic v) {
+      final s = v?.toString() ?? '';
+      if (s.isNotEmpty) c.text = s;
+    }
+    maybe(_nameCtrl,    cv['name']);
+    maybe(_emailCtrl,   cv['email']);
+    maybe(_phoneCtrl,   cv['phone']);
+    maybe(_addressCtrl, cv['address']);
+    maybe(_univCtrl,    cv['university']);
+    maybe(_majorCtrl,   cv['major']);
+    maybe(_yearCtrl,    cv['year']);
+    maybe(_gpaCtrl,     cv['gpa']);
+    maybe(_summaryCtrl, cv['summary']);
+    if (cv['skills'] is List && (cv['skills'] as List).isNotEmpty) {
+      _skills
+        ..clear()
+        ..addAll((cv['skills'] as List).cast<String>());
+    }
+    if (cv['languages'] is List && (cv['languages'] as List).isNotEmpty) {
+      _languages
+        ..clear()
+        ..addAll((cv['languages'] as List).cast<String>());
+    }
+    if (cv['certs'] is List) {
+      _certs
+        ..clear()
+        ..addAll((cv['certs'] as List).cast<String>());
+    }
+    if (cv['experiences'] is List) {
+      _experiences
+        ..clear()
+        ..addAll((cv['experiences'] as List).cast<Map>().map((e) => _ExpItem(
+          role:    e['role']    as String? ?? '',
+          company: e['company'] as String? ?? '',
+          period:  e['period']  as String? ?? '',
+          desc:    e['desc']    as String? ?? '',
+        )));
+    }
+    setState(() {});
+  }
+
+  Map<String, dynamic> _buildCvData() => {
+    'name':        _nameCtrl.text.trim(),
+    'email':       _emailCtrl.text.trim(),
+    'phone':       _phoneCtrl.text.trim(),
+    'address':     _addressCtrl.text.trim(),
+    'university':  _univCtrl.text.trim(),
+    'major':       _majorCtrl.text.trim(),
+    'year':        _yearCtrl.text.trim(),
+    'gpa':         _gpaCtrl.text.trim(),
+    'summary':     _summaryCtrl.text.trim(),
+    'skills':      _skills,
+    'languages':   _languages,
+    'certs':       _certs,
+    'experiences': _experiences.map((e) => {
+      'role': e.role, 'company': e.company, 'period': e.period, 'desc': e.desc,
+    }).toList(),
+  };
+
+  Future<void> _saveProfile() async {
+    final uid = context.read<AuthProvider>().uid;
+    if (uid.isEmpty) return;
+    setState(() => _saving = true);
+    try {
+      await CVService().save(uid, _buildCvData());
+      // Sync core fields back to student profile
+      final parts = _nameCtrl.text.trim().split(' ');
+      await ApiClient.put('/students/$uid', {
+        'firstName': parts.first,
+        'lastName':  parts.length > 1 ? parts.skip(1).join(' ') : '',
+        'university': _univCtrl.text.trim(),
+        'major':      _majorCtrl.text.trim(),
+        'year':       int.tryParse(_yearCtrl.text.trim()),
+        'skills':     _skills,
+        'bio':        _summaryCtrl.text.trim(),
+        'phone':      _phoneCtrl.text.trim(),
+      });
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Профайл хадгалагдлаа ✓'),
+        backgroundColor: Color(0xFF06B6D4),
+        behavior: SnackBarBehavior.floating,
+      ));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Алдаа: $e'),
+        backgroundColor: Color(0xFFEF4444),
+        behavior: SnackBarBehavior.floating,
+      ));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   @override
@@ -397,27 +507,8 @@ class _CVScreenState extends State<CVScreen> {
       final doc  = await _buildPdf();
       final bytes = await doc.save();
 
-      // Save to Firestore
-      // uid already captured before async gap
       if (uid.isNotEmpty) {
-        await CVService().save(uid, {
-          'name':        _nameCtrl.text,
-          'email':       _emailCtrl.text,
-          'phone':       _phoneCtrl.text,
-          'address':     _addressCtrl.text,
-          'university':  _univCtrl.text,
-          'major':       _majorCtrl.text,
-          'year':        _yearCtrl.text,
-          'gpa':         _gpaCtrl.text,
-          'summary':     _summaryCtrl.text,
-          'skills':      _skills,
-          'languages':   _languages,
-          'certs':       _certs,
-          'experiences': _experiences
-              .map((e) => {'role': e.role, 'company': e.company,
-                           'period': e.period, 'desc': e.desc})
-              .toList(),
-        });
+        await CVService().save(uid, _buildCvData());
       }
 
       // Print / Share / Download
@@ -444,22 +535,31 @@ class _CVScreenState extends State<CVScreen> {
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(
-        title: const Text('CV Maker'),
+        title: const Text('CV & Профайл'),
         backgroundColor: AppColors.white,
         foregroundColor: AppColors.textPrimary,
         actions: [
+          if (_saving)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 14),
+              child: SizedBox(width: 18, height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF06B6D4))),
+            )
+          else
+            TextButton.icon(
+              onPressed: _saveProfile,
+              icon: const Icon(Icons.save_outlined, size: 18),
+              label: const Text('Хадгалах'),
+              style: TextButton.styleFrom(foregroundColor: const Color(0xFF06B6D4)),
+            ),
           TextButton.icon(
             onPressed: _generating ? null : _generatePdf,
             icon: _generating
-                ? const SizedBox(
-                    width: 16, height: 16,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: AppColors.primary))
-                : const Icon(Icons.picture_as_pdf_rounded,
-                    size: 18),
-            label: Text(_generating ? 'Үүсгэж байна...' : 'PDF'),
-            style: TextButton.styleFrom(
-                foregroundColor: AppColors.primary),
+                ? const SizedBox(width: 16, height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary))
+                : const Icon(Icons.picture_as_pdf_rounded, size: 18),
+            label: Text(_generating ? '...' : 'PDF'),
+            style: TextButton.styleFrom(foregroundColor: AppColors.primary),
           ),
         ],
       ),

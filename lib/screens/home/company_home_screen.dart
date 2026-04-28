@@ -14,16 +14,25 @@ class CompanyHomeScreen extends StatefulWidget {
 
 class _CompanyHomeState extends State<CompanyHomeScreen> {
   late Future<List<Map<String, dynamic>>> _postsFuture;
-  late String _uid;
+  String _uid = '';
 
   @override
   void initState() {
     super.initState();
     _uid = context.read<AuthProvider>().uid;
-    _load();
+    _postsFuture = _uid.isNotEmpty
+        ? InternshipService().getCompanyPosts(_uid)
+        : Future.value([]);
   }
 
-  void _load() => setState(() => _postsFuture = InternshipService().getCompanyPosts(_uid));
+  void _load() {
+    if (!mounted) return;
+    setState(() {
+      _postsFuture = _uid.isNotEmpty
+          ? InternshipService().getCompanyPosts(_uid)
+          : Future.value([]);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,6 +48,18 @@ class _CompanyHomeState extends State<CompanyHomeScreen> {
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: _postsFuture,
         builder: (context, snap) {
+          if (snap.hasError) {
+            return Center(child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.cloud_off_outlined, size: 40, color: AppColors.muted),
+                const SizedBox(height: 12),
+                Text(snap.error.toString(), style: const TextStyle(color: AppColors.muted, fontSize: 13), textAlign: TextAlign.center),
+                const SizedBox(height: 16),
+                TextButton(onPressed: _load, child: const Text('Дахин оролдох')),
+              ]),
+            ));
+          }
           final loading = snap.connectionState == ConnectionState.waiting;
           final posts   = snap.data ?? [];
           final total   = posts.fold<int>(0, (s, d) => s + ((d['applicant_count'] as num?)?.toInt() ?? 0));
@@ -143,8 +164,8 @@ class _CompanyHomeState extends State<CompanyHomeScreen> {
                       const SizedBox(height: 24),
 
                       // ── Posts section ───────────────────────
-                      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                        SectionLabel(mn ? 'Миний зарууд' : 'My posts'),
+                      Row(children: [
+                        Expanded(child: SectionLabel(mn ? 'Миний зарууд' : 'My posts')),
                         GestureDetector(
                           onTap: () => _showCreatePost(context),
                           child: Container(

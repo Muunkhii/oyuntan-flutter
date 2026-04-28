@@ -132,12 +132,13 @@ app.get('/students/:uid', auth, async (req, res) => {
 });
 
 app.put('/students/:uid', auth, async (req, res) => {
-  const { firstName, lastName, university, major, year, skills, bio, avatarUrl } = req.body;
+  const { firstName, lastName, university, major, year, skills, bio, avatarUrl, phone, psychProfile } = req.body;
   try {
     await pool.query(
       `UPDATE students SET first_name=$1, last_name=$2, university=$3, major=$4,
-       year=$5, skills=$6, bio=$7, avatar_url=$8 WHERE uid=$9`,
-      [firstName, lastName, university, major, year, skills || [], bio, avatarUrl, req.params.uid]
+       year=$5, skills=$6, bio=$7, avatar_url=$8, phone=$9, psych_profile=$10 WHERE uid=$11`,
+      [firstName, lastName, university, major, year, skills || [], bio, avatarUrl,
+       phone || null, psychProfile ? JSON.stringify(psychProfile) : null, req.params.uid]
     );
     res.json({ message: 'Шинэчлэгдлээ' });
   } catch (e) { res.status(500).json({ message: e.message }); }
@@ -212,7 +213,9 @@ app.get('/posts', auth, async (req, res) => {
 app.get('/posts/:id', auth, async (req, res) => {
   try {
     const { rows } = await pool.query(
-      `SELECT p.*, c.name as company_name FROM internship_posts p
+      `SELECT p.*, c.name as company_name, c.industry, c.description as company_description,
+              c.location as company_location, c.website, c.logo_url, c.avg_score, c.review_count
+       FROM internship_posts p
        JOIN companies c ON c.uid = p.company_id WHERE p.id = $1`,
       [req.params.id]
     );
@@ -230,6 +233,14 @@ app.post('/applications', auth, async (req, res) => {
   const { postId, companyId, message } = req.body;
   const studentId = req.user.uid;
   try {
+    // Reject if student already has an active internship
+    const { rows: active } = await pool.query(
+      `SELECT COUNT(*) as cnt FROM internships WHERE student_id = $1 AND status = 'active'`,
+      [studentId]
+    );
+    if (parseInt(active[0].cnt) > 0) {
+      return res.status(400).json({ message: 'Одоогийн дадлагаа дуусгасны дараа шинэ дадлагад өргөдөл гаргана уу.' });
+    }
     const { rows: [app_] } = await pool.query(
       `INSERT INTO applications (post_id, student_id, company_id, message)
        VALUES ($1,$2,$3,$4) RETURNING *`,
@@ -260,7 +271,7 @@ app.get('/applications', auth, async (req, res) => {
     if (companyId) { params.push(companyId); conditions.push(`a.company_id = $${params.length}`); }
     const where = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
     const { rows } = await pool.query(
-      `SELECT a.*, s.first_name, s.last_name, s.university, s.major, s.skills,
+      `SELECT a.*, s.first_name, s.last_name, s.university, s.major, s.skills, s.bio, s.year,
               p.title as post_title
        FROM applications a
        JOIN students s ON s.uid = a.student_id
@@ -295,7 +306,16 @@ app.put('/applications/:id/accept', auth, async (req, res) => {
 // PUT /applications/:id/reject
 app.put('/applications/:id/reject', auth, async (req, res) => {
   try {
-    await pool.query(`UPDATE applications SET status = 'rejected' WHERE id = $1`, [req.params.id]);
+    const { rows } = await pool.query(
+      `UPDATE applications SET status = 'rejected' WHERE id = $1 RETURNING student_id, post_id`,
+      [req.params.id]
+    );
+    if (rows.length) {
+      await pool.query(
+        `INSERT INTO notifications (to_uid, type, post_id) VALUES ($1, 'application_rejected', $2)`,
+        [rows[0].student_id, rows[0].post_id]
+      );
+    }
     res.json({ message: 'Татгалзлаа' });
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
@@ -336,6 +356,30 @@ app.get('/internships/:id', auth, async (req, res) => {
       [req.params.id]
     );
     if (!rows.length) return res.status(404).json({ message: 'Олдсонгүй' });
+    res.json(rows[0]);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// PUT /internships/:id/terminate — хугацаанаас өмнө дуусгах
+app.put('/internships/:id/terminate', auth, async (req, res) => {
+  const { reason } = req.body;
+  const terminatedBy = req.user.type; // 'student' | 'company'
+  try {
+    const { rows } = await pool.query(
+      `UPDATE internships
+         SET status = 'terminated', terminated_by = $1, termination_reason = $2
+       WHERE id = $3
+       RETURNING *`,
+      [terminatedBy, reason || '', req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ message: 'Олдсонгүй' });
+    // нөгөө талд мэдэгдэл илгээх
+    const intern = rows[0];
+    const notifyUid = terminatedBy === 'company' ? intern.student_id : intern.company_id;
+    await pool.query(
+      `INSERT INTO notifications (to_uid, type) VALUES ($1, 'internship_terminated')`,
+      [notifyUid]
+    );
     res.json(rows[0]);
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
@@ -424,6 +468,51 @@ app.get('/reviews', auth, async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════
+// STUDENT REVIEWS (компани → оюутан)
+// ═══════════════════════════════════════════════════════════════
+
+app.post('/student-reviews', auth, async (req, res) => {
+  const { internshipId, studentId, workScore, attitudeScore, punctualityScore, learningScore, wouldRehire, comment } = req.body;
+  const companyId = req.user.uid;
+  const avg = ((workScore + attitudeScore + punctualityScore + learningScore) / 4).toFixed(1);
+  try {
+    const { rows: [rev] } = await pool.query(
+      `INSERT INTO student_reviews
+         (internship_id, company_id, student_id, work_score, attitude_score, punctuality_score, learning_score, avg_score, would_rehire, comment)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+      [internshipId, companyId, studentId, workScore, attitudeScore, punctualityScore, learningScore, avg, wouldRehire, comment]
+    );
+    // дадлагыг completed болгох (terminated биш бол)
+    await pool.query(
+      `UPDATE internships SET status = 'completed' WHERE id = $1 AND status != 'terminated'`,
+      [internshipId]
+    );
+    res.json(rev);
+  } catch (e) {
+    if (e.code === '23505') return res.status(400).json({ message: 'Аль хэдийн үнэлсэн' });
+    res.status(500).json({ message: e.message });
+  }
+});
+
+app.get('/student-reviews', auth, async (req, res) => {
+  const { internshipId, studentId } = req.query;
+  try {
+    let q, params;
+    if (internshipId) {
+      q = 'SELECT * FROM student_reviews WHERE internship_id = $1';
+      params = [internshipId];
+    } else {
+      q = `SELECT sr.*, c.name as company_name FROM student_reviews sr
+           JOIN companies c ON c.uid = sr.company_id
+           WHERE sr.student_id = $1 ORDER BY sr.created_at DESC`;
+      params = [studentId];
+    }
+    const { rows } = await pool.query(q, params);
+    res.json(rows);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// ═══════════════════════════════════════════════════════════════
 // CVs
 // ═══════════════════════════════════════════════════════════════
 
@@ -443,6 +532,53 @@ app.put('/cvs/:studentId', auth, async (req, res) => {
     );
     res.json({ message: 'CV хадгалагдлаа' });
   } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// CLASS SCHEDULES
+// ═══════════════════════════════════════════════════════════════
+
+app.get('/schedules', auth, async (req, res) => {
+  const studentId = req.query.studentId || req.user.uid;
+  try {
+    const { rows } = await pool.query(
+      `SELECT * FROM class_schedules WHERE student_id = $1 ORDER BY day, start_hour, start_min`,
+      [studentId]
+    );
+    // Return in Flutter-friendly camelCase format
+    res.json(rows.map(r => ({
+      id: r.id, day: r.day, subject: r.subject,
+      startHour: r.start_hour, startMin: r.start_min,
+      endHour: r.end_hour,   endMin: r.end_min,
+      room: r.room, teacher: r.teacher, type: r.type,
+    })));
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.put('/schedules', auth, async (req, res) => {
+  const items = Array.isArray(req.body) ? req.body : [];
+  const studentId = req.user.uid;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('DELETE FROM class_schedules WHERE student_id = $1', [studentId]);
+    for (const item of items) {
+      await client.query(
+        `INSERT INTO class_schedules
+           (student_id, day, subject, start_hour, start_min, end_hour, end_min, room, teacher, type)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+        [studentId, item.day, item.subject,
+         item.startHour ?? 8, item.startMin ?? 0,
+         item.endHour ?? 9,   item.endMin ?? 0,
+         item.room || null, item.teacher || null, item.type || 'Лекц']
+      );
+    }
+    await client.query('COMMIT');
+    res.json({ message: 'Хуваарь хадгалагдлаа' });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ message: e.message });
+  } finally { client.release(); }
 });
 
 // ═══════════════════════════════════════════════════════════════

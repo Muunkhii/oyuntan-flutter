@@ -70,15 +70,40 @@ CREATE TABLE IF NOT EXISTS applications (
 
 -- ── Дадлага ─────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS internships (
-  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  student_id     UUID REFERENCES users(uid),
-  post_id        UUID REFERENCES internship_posts(id),
-  company_id     UUID REFERENCES users(uid),
-  status         VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'completed')),
-  duration_days  INTEGER,
-  start_date     TIMESTAMP DEFAULT NOW(),
-  end_date       TIMESTAMP,
-  completed_days INTEGER DEFAULT 0
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  student_id          UUID REFERENCES users(uid),
+  post_id             UUID REFERENCES internship_posts(id),
+  company_id          UUID REFERENCES users(uid),
+  status              VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'completed', 'terminated')),
+  duration_days       INTEGER,
+  start_date          TIMESTAMP DEFAULT NOW(),
+  end_date            TIMESTAMP,
+  completed_days      INTEGER DEFAULT 0,
+  terminated_by       VARCHAR(20),   -- 'student' | 'company'
+  termination_reason  TEXT
+);
+
+-- Migration (existing DB): run these once
+-- ALTER TABLE internships ADD COLUMN IF NOT EXISTS terminated_by VARCHAR(20);
+-- ALTER TABLE internships ADD COLUMN IF NOT EXISTS termination_reason TEXT;
+-- ALTER TABLE internships DROP CONSTRAINT IF EXISTS internships_status_check;
+-- ALTER TABLE internships ADD CONSTRAINT internships_status_check CHECK (status IN ('active','completed','terminated'));
+-- ALTER TABLE students ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
+-- ALTER TABLE students ADD COLUMN IF NOT EXISTS psych_profile JSONB;
+
+-- ── Хичээлийн хуваарь ────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS class_schedules (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  student_id  UUID REFERENCES users(uid) ON DELETE CASCADE,
+  day         SMALLINT NOT NULL CHECK (day BETWEEN 0 AND 6),
+  subject     VARCHAR(255) NOT NULL,
+  start_hour  SMALLINT NOT NULL,
+  start_min   SMALLINT NOT NULL DEFAULT 0,
+  end_hour    SMALLINT NOT NULL,
+  end_min     SMALLINT NOT NULL DEFAULT 0,
+  room        VARCHAR(100),
+  teacher     VARCHAR(255),
+  type        VARCHAR(50) DEFAULT 'Лекц'
 );
 
 -- ── Өдрийн тэмдэглэл ────────────────────────────────────────────
@@ -109,6 +134,22 @@ CREATE TABLE IF NOT EXISTS reviews (
   would_return   BOOLEAN,
   comment        TEXT,
   created_at     TIMESTAMP DEFAULT NOW()
+);
+
+-- ── Компанийн оюутанд өгсөн үнэлгээ ────────────────────────────
+CREATE TABLE IF NOT EXISTS student_reviews (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  internship_id     UUID UNIQUE REFERENCES internships(id),
+  company_id        UUID REFERENCES users(uid),
+  student_id        UUID REFERENCES users(uid),
+  work_score        INTEGER CHECK (work_score BETWEEN 1 AND 5),
+  attitude_score    INTEGER CHECK (attitude_score BETWEEN 1 AND 5),
+  punctuality_score INTEGER CHECK (punctuality_score BETWEEN 1 AND 5),
+  learning_score    INTEGER CHECK (learning_score BETWEEN 1 AND 5),
+  avg_score         DECIMAL(3,1),
+  would_rehire      BOOLEAN,
+  comment           TEXT,
+  created_at        TIMESTAMP DEFAULT NOW()
 );
 
 -- ── CV ───────────────────────────────────────────────────────────

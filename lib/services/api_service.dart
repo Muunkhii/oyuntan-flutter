@@ -83,6 +83,15 @@ class ApiClient {
     return _parse(res);
   }
 
+  static Future<dynamic> putList(String path, List<dynamic> body) async {
+    final res = await http.put(
+      Uri.parse('$_kBase$path'),
+      headers: _headers,
+      body: jsonEncode(body),
+    );
+    return _parse(res);
+  }
+
   static dynamic _parse(http.Response res) {
     final body = jsonDecode(utf8.decode(res.bodyBytes));
     if (res.statusCode >= 400) {
@@ -190,8 +199,10 @@ class InternshipService {
     });
   }
 
-  Future<void> rejectApplication(String applicationId) async {
-    await ApiClient.put('/applications/$applicationId/reject', {});
+  Future<void> rejectApplication(String applicationId, {String? reason}) async {
+    await ApiClient.put('/applications/$applicationId/reject', {
+      if (reason != null && reason.isNotEmpty) 'reason': reason,
+    });
   }
 
   Future<List<Map<String, dynamic>>> getCandidates(String postId) async {
@@ -214,6 +225,10 @@ class InternshipService {
         : '/applications?companyId=$companyId';
     final list = await ApiClient.get(q) as List;
     return list.cast<Map<String, dynamic>>();
+  }
+
+  Future<void> terminateInternship(String internshipId, String reason) async {
+    await ApiClient.put('/internships/$internshipId/terminate', {'reason': reason});
   }
 }
 
@@ -318,11 +333,62 @@ class NotificationService {
 }
 
 // ─────────────────────────────────────────────────────────────
+//  ScheduleService
+// ─────────────────────────────────────────────────────────────
+class ScheduleService {
+  Future<List<Map<String, dynamic>>> getSchedule(String studentId) async {
+    final list = await ApiClient.get('/schedules?studentId=$studentId') as List;
+    return list.cast<Map<String, dynamic>>();
+  }
+
+  Future<void> saveSchedule(List<Map<String, dynamic>> items) async {
+    await ApiClient.putList('/schedules', items);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
 //  InternTrackingService
 // ─────────────────────────────────────────────────────────────
 class InternTrackingService {
   Future<List<Map<String, dynamic>>> getCompanyInternships(String companyId) async {
     final list = await ApiClient.get('/internships?companyId=$companyId') as List;
+    return list.cast<Map<String, dynamic>>();
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+//  StudentReviewService  (компани → оюутан үнэлнэ)
+// ─────────────────────────────────────────────────────────────
+class StudentReviewService {
+  Future<void> submit({
+    required String internshipId,
+    required String studentId,
+    required int work,
+    required int attitude,
+    required int punctuality,
+    required int learning,
+    required bool wouldRehire,
+    String? comment,
+  }) async {
+    await ApiClient.post('/student-reviews', {
+      'internshipId':      internshipId,
+      'studentId':         studentId,
+      'workScore':         work,
+      'attitudeScore':     attitude,
+      'punctualityScore':  punctuality,
+      'learningScore':     learning,
+      'wouldRehire':       wouldRehire,
+      if (comment != null) 'comment': comment,
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> getForInternship(String internshipId) async {
+    final list = await ApiClient.get('/student-reviews?internshipId=$internshipId') as List;
+    return list.cast<Map<String, dynamic>>();
+  }
+
+  Future<List<Map<String, dynamic>>> getForStudent(String studentId) async {
+    final list = await ApiClient.get('/student-reviews?studentId=$studentId') as List;
     return list.cast<Map<String, dynamic>>();
   }
 }

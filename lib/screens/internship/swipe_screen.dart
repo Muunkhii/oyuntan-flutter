@@ -94,9 +94,13 @@ class _SwipeScreenState extends State<SwipeScreen> {
                           onPanStart: (_) => setState(() => _dragging = true),
                           onPanUpdate: (d) => setState(() => _dragOffset += d.delta),
                           onPanEnd: (_) {
-                            if (_dragOffset.dx > 80) _accept();
-                            else if (_dragOffset.dx < -80) _reject();
-                            else setState(() { _dragOffset = Offset.zero; _dragging = false; });
+                            if (_dragOffset.dx > 80) {
+                              _accept();
+                            } else if (_dragOffset.dx < -80) {
+                              _reject();
+                            } else {
+                              setState(() { _dragOffset = Offset.zero; _dragging = false; });
+                            }
                           },
                           child: AnimatedContainer(
                             duration: _dragging ? 0.ms : 200.ms,
@@ -139,8 +143,10 @@ class _SwipeScreenState extends State<SwipeScreen> {
     return FutureBuilder<Map<String, dynamic>>(
       future: ApiClient.get('/students/$studentId').then((v) => v as Map<String, dynamic>),
       builder: (_, snap) {
-        if (!snap.hasData) return const SizedBox(height: 420,
-          child: Center(child: CircularProgressIndicator(strokeWidth: 2)));
+        if (!snap.hasData) {
+          return const SizedBox(height: 420,
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2)));
+        }
         final s = snap.data!;
         final name       = '${s['first_name'] ?? ''} ${s['last_name'] ?? ''}'.trim();
         final university = s['university'] as String? ?? '';

@@ -108,8 +108,9 @@ class _PostsTabState extends State<_PostsTab> with AutomaticKeepAliveClientMixin
     return FutureBuilder<List<Map<String, dynamic>>>(
       future: _future,
       builder: (ctx, snap) {
-        if (snap.connectionState == ConnectionState.waiting)
+        if (snap.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2));
+        }
         final posts = snap.data ?? [];
         if (posts.isEmpty) {
           return const _Empty(
@@ -219,9 +220,9 @@ class _ApplicationsTabState extends State<_ApplicationsTab> with AutomaticKeepAl
     }
   }
 
-  Future<void> _reject(Map<String, dynamic> app) async {
+  Future<void> _reject(Map<String, dynamic> app, {String? reason}) async {
     try {
-      await InternshipService().rejectApplication(app['id'] as String);
+      await InternshipService().rejectApplication(app['id'] as String, reason: reason);
       if (!mounted) return;
       _load();
     } on ApiException catch (e) {
@@ -240,21 +241,29 @@ class _ApplicationsTabState extends State<_ApplicationsTab> with AutomaticKeepAl
         content: Column(mainAxisSize: MainAxisSize.min, children: [
           const Text('Хэдэн өдөр дадлага хийх вэ?', style: TextStyle(fontSize: 13, color: AppColors.muted)),
           const SizedBox(height: 12),
-          TextField(
-            controller: ctrl,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(suffixText: 'өдөр'),
-          ),
+          TextField(controller: ctrl, keyboardType: TextInputType.number, decoration: const InputDecoration(suffixText: 'өдөр')),
         ]),
         actions: [
           TextButton(onPressed: () => Navigator.pop(dCtx), child: const Text('Болих')),
           ElevatedButton(
             onPressed: () => Navigator.pop(dCtx, int.tryParse(ctrl.text) ?? 30),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary, foregroundColor: Colors.white, elevation: 0),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white, elevation: 0),
             child: const Text('Зөвшөөрөх'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _openDetail(Map<String, dynamic> app) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _ApplicantDetailSheet(
+        application: app,
+        onAccept: () => _accept(app),
+        onReject: (reason) => _reject(app, reason: reason),
       ),
     );
   }
@@ -265,8 +274,9 @@ class _ApplicationsTabState extends State<_ApplicationsTab> with AutomaticKeepAl
     return FutureBuilder<List<Map<String, dynamic>>>(
       future: _future,
       builder: (ctx, snap) {
-        if (snap.connectionState == ConnectionState.waiting)
+        if (snap.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2));
+        }
         final apps = snap.data ?? [];
         if (apps.isEmpty) {
           return const _Empty(
@@ -281,19 +291,19 @@ class _ApplicationsTabState extends State<_ApplicationsTab> with AutomaticKeepAl
             padding: const EdgeInsets.all(16),
             itemCount: apps.length,
             itemBuilder: (_, i) {
-              final a         = apps[i];
-              final firstName = a['first_name'] as String? ?? '';
-              final lastName  = a['last_name']  as String? ?? '';
-              final name      = '$lastName $firstName'.trim();
-              final univ      = a['university']  as String? ?? '';
-              final major     = a['major']       as String? ?? '';
-              final skills    = (a['skills'] as List?)?.cast<String>() ?? [];
-              final postTitle = a['post_title']  as String? ?? '';
-              final message   = a['message']     as String?;
+              final a        = apps[i];
+              final fn       = a['first_name'] as String? ?? '';
+              final ln       = a['last_name']  as String? ?? '';
+              final name     = '$ln $fn'.trim();
+              final univ     = a['university'] as String? ?? '';
+              final major    = a['major']      as String? ?? '';
+              final skills   = (a['skills'] as List?)?.cast<String>() ?? [];
+              final postTitle= a['post_title'] as String? ?? '';
 
               return _Card(
                 margin: const EdgeInsets.only(bottom: 12),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  // Header row
                   Row(children: [
                     _InitialsAvatar(name: name),
                     const SizedBox(width: 10),
@@ -304,25 +314,20 @@ class _ApplicationsTabState extends State<_ApplicationsTab> with AutomaticKeepAl
                     if (postTitle.isNotEmpty)
                       _Chip(postTitle, bg: AppColors.primaryLight, fg: AppColors.primary),
                   ]),
-                  if (message != null && message.isNotEmpty) ...[
-                    const SizedBox(height: 10),
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(color: AppColors.bg, borderRadius: BorderRadius.circular(8)),
-                      child: Text(message,
-                        style: const TextStyle(fontSize: 12, color: AppColors.text, height: 1.5))),
-                  ],
                   if (skills.isNotEmpty) ...[
                     const SizedBox(height: 10),
                     Wrap(spacing: 6, runSpacing: 6,
-                      children: skills.take(5).map((s) =>
-                        _Chip(s, bg: AppColors.bg, fg: AppColors.muted)).toList()),
+                      children: skills.take(4).map((s) => _Chip(s, bg: AppColors.bg, fg: AppColors.muted)).toList()),
                   ],
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 12),
+                  // Action row
                   Row(children: [
+                    Expanded(child: _ActionBtn('Дэлгэрэнгүй', Icons.person_outline_rounded,
+                      AppColors.primary, AppColors.primaryLight, () => _openDetail(a))),
+                    const SizedBox(width: 8),
                     Expanded(child: _ActionBtn('Татгалзах', Icons.close_rounded,
-                      AppColors.red, AppColors.redLight, () => _reject(a))),
-                    const SizedBox(width: 10),
+                      AppColors.red, AppColors.redLight, () => _openDetail(a))),
+                    const SizedBox(width: 8),
                     Expanded(child: _ActionBtn('Зөвшөөрөх', Icons.check_rounded,
                       Colors.white, AppColors.teal, () => _accept(a))),
                   ]),
@@ -360,11 +365,13 @@ class _InternsTabState extends State<_InternsTab> with AutomaticKeepAliveClientM
     return FutureBuilder<List<Map<String, dynamic>>>(
       future: _future,
       builder: (ctx, snap) {
-        if (snap.connectionState == ConnectionState.waiting)
+        if (snap.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2));
-        final all       = snap.data ?? [];
-        final active    = all.where((d) => d['status'] == 'active').toList();
-        final completed = all.where((d) => d['status'] == 'completed').toList();
+        }
+        final all        = snap.data ?? [];
+        final active     = all.where((d) => d['status'] == 'active').toList();
+        final completed  = all.where((d) => d['status'] == 'completed').toList();
+        final terminated = all.where((d) => d['status'] == 'terminated').toList();
         if (all.isEmpty) {
           return const _Empty(
             icon: Icons.people_outline_rounded,
@@ -379,12 +386,16 @@ class _InternsTabState extends State<_InternsTab> with AutomaticKeepAliveClientM
             children: [
               if (active.isNotEmpty) ...[
                 _SectionHeader('Одоо дадлага хийж байгаа (${active.length})'),
-                ...active.map((d) => _InternCard(data: d, isActive: true)),
+                ...active.map((d) => _InternCard(data: d, isActive: true, onRefresh: _load)),
                 const SizedBox(height: 8),
               ],
               if (completed.isNotEmpty) ...[
                 _SectionHeader('Дадлага дууссан (${completed.length})'),
-                ...completed.map((d) => _InternCard(data: d, isActive: false)),
+                ...completed.map((d) => _InternCard(data: d, isActive: false, onRefresh: _load)),
+              ],
+              if (terminated.isNotEmpty) ...[
+                _SectionHeader('Цуцлагдсан (${terminated.length})'),
+                ...terminated.map((d) => _InternCard(data: d, isActive: false, onRefresh: _load)),
               ],
               const SizedBox(height: 20),
             ],
@@ -395,11 +406,12 @@ class _InternsTabState extends State<_InternsTab> with AutomaticKeepAliveClientM
   }
 }
 
-// ── Intern card with expandable diary ─────────────────────────
+// ── Intern card with expandable diary + actions ───────────────
 class _InternCard extends StatefulWidget {
   final Map<String, dynamic> data;
   final bool isActive;
-  const _InternCard({required this.data, required this.isActive});
+  final VoidCallback onRefresh;
+  const _InternCard({required this.data, required this.isActive, required this.onRefresh});
   @override State<_InternCard> createState() => _InternCardState();
 }
 
@@ -408,18 +420,23 @@ class _InternCardState extends State<_InternCard> {
 
   @override
   Widget build(BuildContext context) {
-    final d         = widget.data;
-    final firstName = d['first_name'] as String? ?? '';
-    final lastName  = d['last_name']  as String? ?? '';
-    final name      = '$lastName $firstName'.trim();
-    final title     = d['title']      as String? ?? '';
-    final completed = (d['completed_days'] as num?)?.toInt() ?? 0;
-    final total     = (d['duration_days']  as num?)?.toInt() ?? 1;
-    final progress  = (completed / total).clamp(0.0, 1.0);
+    final d          = widget.data;
+    final firstName  = d['first_name'] as String? ?? '';
+    final lastName   = d['last_name']  as String? ?? '';
+    final name       = '$lastName $firstName'.trim();
+    final title      = d['title']      as String? ?? '';
+    final internId   = d['id']         as String;
+    final studentId  = d['student_id'] as String? ?? '';
+    final completed  = (d['completed_days'] as num?)?.toInt() ?? 0;
+    final total      = (d['duration_days']  as num?)?.toInt() ?? 1;
+    final progress   = (completed / total).clamp(0.0, 1.0);
+    final isTerminated = d['status'] == 'terminated';
 
     return _Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+
+        // Header row
         Row(children: [
           _InitialsAvatar(name: name),
           const SizedBox(width: 10),
@@ -427,7 +444,9 @@ class _InternCardState extends State<_InternCard> {
             Text(name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.text)),
             Text(title, style: const TextStyle(fontSize: 11, color: AppColors.muted)),
           ])),
-          if (!widget.isActive)
+          if (isTerminated)
+            const _Chip('Цуцлагдсан', bg: AppColors.redLight, fg: AppColors.red)
+          else if (!widget.isActive)
             const _Chip('Дууссан', bg: AppColors.tealLight, fg: AppColors.teal)
           else
             GestureDetector(
@@ -437,7 +456,9 @@ class _InternCardState extends State<_InternCard> {
                 bg: AppColors.primaryLight, fg: AppColors.primary),
             ),
         ]),
-        if (widget.isActive) ...[
+
+        // Progress (active only)
+        if (widget.isActive && !isTerminated) ...[
           const SizedBox(height: 10),
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
             Text('$completed / $total өдөр',
@@ -452,11 +473,78 @@ class _InternCardState extends State<_InternCard> {
               value: progress, minHeight: 5,
               backgroundColor: AppColors.bg, color: AppColors.teal)),
         ],
-        if (_expanded && widget.isActive) ...[
+
+        // Termination reason
+        if (isTerminated && (d['termination_reason'] as String? ?? '').isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(color: AppColors.redLight, borderRadius: BorderRadius.circular(8)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Цуцлалтын шалтгаан', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.red)),
+              const SizedBox(height: 4),
+              Text(d['termination_reason'] as String, style: const TextStyle(fontSize: 11, color: AppColors.text)),
+            ]),
+          ),
+        ],
+
+        // Diary timeline
+        if (_expanded && widget.isActive && !isTerminated) ...[
           const SizedBox(height: 14),
-          _DiaryTimeline(internshipId: d['id'] as String),
+          _DiaryTimeline(internshipId: internId),
+        ],
+
+        // Action buttons
+        if (widget.isActive && !isTerminated) ...[
+          const SizedBox(height: 12),
+          const Divider(height: 1),
+          const SizedBox(height: 10),
+          Row(children: [
+            Expanded(child: _ActionBtn(
+              'Дуусгах', Icons.stop_circle_outlined,
+              AppColors.red, AppColors.redLight,
+              () => _showTerminate(context, internId),
+            )),
+          ]),
+        ] else if (!widget.isActive || isTerminated) ...[
+          const SizedBox(height: 12),
+          const Divider(height: 1),
+          const SizedBox(height: 10),
+          Row(children: [
+            Expanded(child: _ActionBtn(
+              'Оюутан үнэлэх', Icons.star_outline_rounded,
+              AppColors.amber, AppColors.amberLight,
+              () => _showRateStudent(context, internId, studentId, name),
+            )),
+          ]),
         ],
       ]),
+    );
+  }
+
+  void _showTerminate(BuildContext ctx, String internId) {
+    showModalBottomSheet(
+      context: ctx,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) => _TerminateSheet(
+        internshipId: internId,
+        onDone: widget.onRefresh,
+      ),
+    );
+  }
+
+  void _showRateStudent(BuildContext ctx, String internId, String studentId, String studentName) {
+    showModalBottomSheet(
+      context: ctx,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) => _RateStudentSheet(
+        internshipId: internId,
+        studentId: studentId,
+        studentName: studentName,
+        onDone: widget.onRefresh,
+      ),
     );
   }
 }
@@ -481,13 +569,15 @@ class _DiaryTimelineState extends State<_DiaryTimeline> {
     return FutureBuilder<List<Map<String, dynamic>>>(
       future: _future,
       builder: (_, snap) {
-        if (snap.connectionState == ConnectionState.waiting)
+        if (snap.connectionState == ConnectionState.waiting) {
           return const SizedBox(height: 24, child: Center(
             child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary)));
+        }
         final entries = snap.data ?? [];
-        if (entries.isEmpty)
+        if (entries.isEmpty) {
           return const Text('Тэмдэглэл байхгүй',
             style: TextStyle(fontSize: 11, color: AppColors.muted));
+        }
         return Column(
           children: entries.take(5).toList().asMap().entries.map((e) {
             final d      = e.value;
@@ -622,4 +712,809 @@ class _Empty extends StatelessWidget {
       ]),
     ),
   );
+}
+
+// ── Terminate Sheet ───────────────────────────────────────────
+class _TerminateSheet extends StatefulWidget {
+  final String internshipId;
+  final VoidCallback onDone;
+  const _TerminateSheet({required this.internshipId, required this.onDone});
+  @override State<_TerminateSheet> createState() => _TerminateSheetState();
+}
+class _TerminateSheetState extends State<_TerminateSheet> {
+  final _reason = TextEditingController();
+  bool _saving = false;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 24),
+    child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Center(child: Container(width: 44, height: 4,
+        decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)))),
+      const SizedBox(height: 20),
+      Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(color: AppColors.redLight, borderRadius: BorderRadius.circular(12)),
+        child: const Row(children: [
+          Icon(Icons.warning_amber_rounded, color: AppColors.red, size: 20),
+          SizedBox(width: 10),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Дадлага хугацаанаас өмнө дуусгах', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.red)),
+            Text('Гэрээнд тусгагдсан нөхцөл зөрчигдсөн тохиолдолд', style: TextStyle(fontSize: 11, color: AppColors.red)),
+          ])),
+        ]),
+      ),
+      const SizedBox(height: 16),
+      const Text('Шалтгаан', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+      const SizedBox(height: 8),
+      TextField(
+        controller: _reason,
+        maxLines: 4,
+        decoration: const InputDecoration(
+          hintText: 'Дадлагыг дуусгах шалтгаанаа дэлгэрэнгүй бичнэ үү. '
+              'Жишээ нь: гэрээний нөхцөл зөрчих, чанаргүй ажил...',
+        ),
+      ),
+      const SizedBox(height: 20),
+      Row(children: [
+        Expanded(child: OutlinedButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Болих'),
+        )),
+        const SizedBox(width: 12),
+        Expanded(child: ElevatedButton(
+          onPressed: _saving ? null : _terminate,
+          style: ElevatedButton.styleFrom(backgroundColor: AppColors.red, foregroundColor: Colors.white),
+          child: _saving
+              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+              : const Text('Дуусгах'),
+        )),
+      ]),
+    ]),
+  );
+
+  Future<void> _terminate() async {
+    if (_reason.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Шалтгаан бичнэ үү'), backgroundColor: AppColors.red,
+        behavior: SnackBarBehavior.floating));
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      await InternshipService().terminateInternship(widget.internshipId, _reason.text.trim());
+      if (mounted) {
+        Navigator.pop(context);
+        widget.onDone();
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(e.message), backgroundColor: AppColors.red,
+          behavior: SnackBarBehavior.floating));
+      }
+    }
+  }
+
+  @override void dispose() { _reason.dispose(); super.dispose(); }
+}
+
+// ── Rate Student Sheet ────────────────────────────────────────
+class _RateStudentSheet extends StatefulWidget {
+  final String internshipId, studentId, studentName;
+  final VoidCallback onDone;
+  const _RateStudentSheet({
+    required this.internshipId, required this.studentId,
+    required this.studentName, required this.onDone,
+  });
+  @override State<_RateStudentSheet> createState() => _RateStudentSheetState();
+}
+class _RateStudentSheetState extends State<_RateStudentSheet> {
+  final _scores = <String, int>{'work': 0, 'attitude': 0, 'punctuality': 0, 'learning': 0};
+  bool? _wouldRehire;
+  final _comment = TextEditingController();
+  bool _saving = false, _done = false;
+
+  static const _criteria = [
+    ('work',        'Ажлын гүйцэтгэл'),
+    ('attitude',    'Хандлага ба хамт олонтой харилцаа'),
+    ('punctuality', 'Цаг баримтлал'),
+    ('learning',    'Суралцах чадвар'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    if (_done) {
+      return Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(width: 64, height: 64,
+            decoration: const BoxDecoration(color: AppColors.greenLight, shape: BoxShape.circle),
+            child: const Icon(Icons.check, size: 32, color: AppColors.green)),
+          const SizedBox(height: 16),
+          const Text('Үнэлгээ илгээгдлээ', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          const Text('Баярлалаа! Таны үнэлгээ оюутанд илгээгдлээ.',
+            style: TextStyle(fontSize: 13, color: AppColors.muted), textAlign: TextAlign.center),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: () { Navigator.pop(context); widget.onDone(); },
+            child: const Text('Хаах'),
+          ),
+        ]),
+      );
+    }
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 24),
+      child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Center(child: Container(width: 44, height: 4,
+          decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)))),
+        const SizedBox(height: 16),
+        Row(children: [
+          Container(width: 40, height: 40,
+            decoration: BoxDecoration(color: AppColors.amberLight, borderRadius: BorderRadius.circular(12)),
+            child: const Icon(Icons.star_rounded, color: AppColors.amber, size: 22)),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('Оюутан үнэлэх', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            Text(widget.studentName, style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+          ])),
+        ]),
+        const SizedBox(height: 20),
+
+        ..._criteria.map((cr) => Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(cr.$2, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+            const SizedBox(height: 8),
+            Row(children: List.generate(5, (i) => GestureDetector(
+              onTap: () => setState(() => _scores[cr.$1] = i + 1),
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Icon(
+                  i < (_scores[cr.$1] ?? 0) ? Icons.star_rounded : Icons.star_outline_rounded,
+                  size: 32,
+                  color: i < (_scores[cr.$1] ?? 0) ? const Color(0xFFF59E0B) : AppColors.faint,
+                ),
+              ),
+            ))),
+          ]),
+        )),
+
+        const Text('Дахин энэ оюутантай хамтрах уу?',
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+        const SizedBox(height: 10),
+        Row(children: [
+          Expanded(child: _ynBtn('Тийм', _wouldRehire == true, () => setState(() => _wouldRehire = true))),
+          const SizedBox(width: 10),
+          Expanded(child: _ynBtn('Үгүй', _wouldRehire == false, () => setState(() => _wouldRehire = false))),
+        ]),
+
+        const SizedBox(height: 16),
+        const Text('Сэтгэгдэл (заавал биш)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _comment, maxLines: 3,
+          decoration: const InputDecoration(hintText: 'Оюутны ажлын талаар нэмэлт сэтгэгдэл...'),
+        ),
+        const SizedBox(height: 24),
+        ElevatedButton(
+          onPressed: _saving ? null : _submit,
+          child: _saving
+              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+              : const Text('Үнэлгээ илгээх'),
+        ),
+        const SizedBox(height: 8),
+      ])),
+    );
+  }
+
+  Widget _ynBtn(String l, bool on, VoidCallback t) => GestureDetector(
+    onTap: t,
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(
+        color: on ? AppColors.primary : Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: on ? AppColors.primary : AppColors.border, width: on ? 1.5 : 0.5),
+      ),
+      child: Text(l, textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
+          color: on ? Colors.white : AppColors.muted)),
+    ),
+  );
+
+  Future<void> _submit() async {
+    if (_scores.values.any((v) => v == 0)) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Бүх үнэлгээг дүүргэнэ үү'),
+        backgroundColor: AppColors.red, behavior: SnackBarBehavior.floating));
+      return;
+    }
+    if (_wouldRehire == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Дахин хамтрах эсэхийг сонгоно уу'),
+        backgroundColor: AppColors.red, behavior: SnackBarBehavior.floating));
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      await StudentReviewService().submit(
+        internshipId: widget.internshipId,
+        studentId: widget.studentId,
+        work: _scores['work']!,
+        attitude: _scores['attitude']!,
+        punctuality: _scores['punctuality']!,
+        learning: _scores['learning']!,
+        wouldRehire: _wouldRehire!,
+        comment: _comment.text.trim().isEmpty ? null : _comment.text.trim(),
+      );
+      if (mounted) setState(() => _done = true);
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(e.message), backgroundColor: AppColors.red,
+          behavior: SnackBarBehavior.floating));
+      }
+    }
+  }
+
+  @override void dispose() { _comment.dispose(); super.dispose(); }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// APPLICANT DETAIL SHEET — 4 tabs
+// ═══════════════════════════════════════════════════════════════
+class _ApplicantDetailSheet extends StatefulWidget {
+  final Map<String, dynamic> application;
+  final VoidCallback onAccept;
+  final void Function(String? reason) onReject;
+  const _ApplicantDetailSheet({required this.application, required this.onAccept, required this.onReject});
+  @override State<_ApplicantDetailSheet> createState() => _ApplicantDetailSheetState();
+}
+
+class _ApplicantDetailSheetState extends State<_ApplicantDetailSheet>
+    with SingleTickerProviderStateMixin {
+  late TabController _tab;
+  late Future<Map<String, dynamic>?> _cvFuture;
+  late Future<List<Map<String, dynamic>>> _scheduleFuture;
+  late Future<Map<String, dynamic>?> _studentFuture;
+  bool _showRejectInput = false;
+  final _rejectCtrl = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _tab = TabController(length: 4, vsync: this);
+    final sid   = widget.application['student_id'] as String? ?? '';
+    _cvFuture       = CVService().get(sid);
+    _scheduleFuture = ScheduleService().getSchedule(sid);
+    _studentFuture  = ApiClient.get('/students/$sid').then((v) => v as Map<String, dynamic>?);
+  }
+
+  @override
+  void dispose() { _tab.dispose(); _rejectCtrl.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    final a   = widget.application;
+    final fn  = a['first_name'] as String? ?? '';
+    final ln  = a['last_name']  as String? ?? '';
+    final name = '$ln $fn'.trim();
+    final univ  = a['university'] as String? ?? '';
+    final major = a['major']      as String? ?? '';
+    final year  = a['year'];
+    final postTitle = a['post_title'] as String? ?? '';
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.92, maxChildSize: 0.97, minChildSize: 0.5,
+      builder: (_, ctrl) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        child: Column(children: [
+          const SizedBox(height: 10),
+          Container(width: 40, height: 4,
+            decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2))),
+
+          // Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+            child: Row(children: [
+              _InitialsAvatar(name: name),
+              const SizedBox(width: 12),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(name, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+                Text(
+                  [univ, major, year != null ? '$year-р курс' : null]
+                    .where((s) => s != null && s.isNotEmpty).join(' · '),
+                  style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+              ])),
+              if (postTitle.isNotEmpty)
+                _Chip(postTitle, bg: AppColors.primaryLight, fg: AppColors.primary),
+            ]),
+          ),
+
+          // Tabs
+          const SizedBox(height: 8),
+          TabBar(
+            controller: _tab,
+            labelColor: AppColors.primary,
+            unselectedLabelColor: AppColors.muted,
+            indicatorColor: AppColors.primary,
+            indicatorSize: TabBarIndicatorSize.label,
+            labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            unselectedLabelStyle: const TextStyle(fontSize: 12),
+            tabs: const [Tab(text: 'Профайл'), Tab(text: 'CV'), Tab(text: 'Хуваарь'), Tab(text: 'Тест')],
+          ),
+
+          // Content
+          Expanded(
+            child: TabBarView(controller: _tab, children: [
+              _ProfileTabContent(application: a, studentFuture: _studentFuture),
+              _CvTabContent(cvFuture: _cvFuture),
+              _ScheduleTabContent(scheduleFuture: _scheduleFuture),
+              _PsychTabContent(studentFuture: _studentFuture),
+            ]),
+          ),
+
+          // Bottom actions
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border(top: BorderSide(color: AppColors.border.withValues(alpha: 0.5)))),
+            child: _showRejectInput
+              ? Padding(
+                  padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + 16),
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    TextField(
+                      controller: _rejectCtrl, maxLines: 2,
+                      decoration: const InputDecoration(hintText: 'Татгалзсан шалтгаан (заавал биш)...')),
+                    const SizedBox(height: 10),
+                    Row(children: [
+                      Expanded(child: OutlinedButton(
+                        onPressed: () => setState(() { _showRejectInput = false; _rejectCtrl.clear(); }),
+                        child: const Text('Болих'))),
+                      const SizedBox(width: 10),
+                      Expanded(child: ElevatedButton(
+                        onPressed: () {
+                          final r = _rejectCtrl.text.trim().isEmpty ? null : _rejectCtrl.text.trim();
+                          Navigator.pop(context);
+                          widget.onReject(r);
+                        },
+                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.red, foregroundColor: Colors.white),
+                        child: const Text('Татгалзах'))),
+                    ]),
+                  ]))
+              : Padding(
+                  padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + 16),
+                  child: Row(children: [
+                    Expanded(child: OutlinedButton.icon(
+                      onPressed: () => setState(() => _showRejectInput = true),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.red, side: const BorderSide(color: AppColors.red),
+                        padding: const EdgeInsets.symmetric(vertical: 13)),
+                      icon: const Icon(Icons.close_rounded, size: 16),
+                      label: const Text('Татгалзах', style: TextStyle(fontWeight: FontWeight.w600)))),
+                    const SizedBox(width: 12),
+                    Expanded(child: ElevatedButton.icon(
+                      onPressed: () { Navigator.pop(context); widget.onAccept(); },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.teal, foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 13)),
+                      icon: const Icon(Icons.check_rounded, size: 16),
+                      label: const Text('Зөвшөөрөх', style: TextStyle(fontWeight: FontWeight.w600)))),
+                  ])),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+// ── Tab 1: Profile ─────────────────────────────────────────────
+class _ProfileTabContent extends StatelessWidget {
+  final Map<String, dynamic> application;
+  final Future<Map<String, dynamic>?> studentFuture;
+  const _ProfileTabContent({required this.application, required this.studentFuture});
+
+  @override
+  Widget build(BuildContext context) {
+    final a       = application;
+    final bio     = a['bio']      as String? ?? '';
+    final skills  = (a['skills'] as List?)?.cast<String>() ?? [];
+    final message = a['message'] as String? ?? '';
+    final univ    = a['university'] as String? ?? '';
+    final major   = a['major']      as String? ?? '';
+    final year    = a['year'];
+
+    return ListView(padding: const EdgeInsets.all(16), children: [
+      _DL('ХУВИЙН МЭДЭЭЛЭЛ'),
+      _InfoBox(children: [
+        _DRow(Icons.school_outlined,   'Сургууль', univ),
+        _DRow(Icons.menu_book_outlined, 'Мэргэжил', major),
+        if (year != null) _DRow(Icons.class_outlined, 'Курс', '$year-р курс'),
+      ]),
+
+      FutureBuilder<Map<String, dynamic>?>(
+        future: studentFuture,
+        builder: (_, snap) {
+          final s = snap.data;
+          if (s == null) return const SizedBox.shrink();
+          final phone = s['phone'] as String? ?? '';
+          final gpa   = (s['gpa']   ?? '').toString();
+          if (phone.isEmpty && gpa.isEmpty) return const SizedBox.shrink();
+          return _InfoBox(children: [
+            _DRow(Icons.phone_outlined, 'Утас', phone),
+            _DRow(Icons.grade_outlined, 'GPA',  gpa),
+          ]);
+        },
+      ),
+
+      if (bio.isNotEmpty) ...[
+        _DL('ТАНИЛЦУУЛГА'),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(color: AppColors.bg, borderRadius: BorderRadius.circular(10)),
+          child: Text(bio, style: const TextStyle(fontSize: 13, color: AppColors.text, height: 1.6))),
+        const SizedBox(height: 14),
+      ],
+
+      if (skills.isNotEmpty) ...[
+        _DL('УР ЧАДВАР'),
+        Wrap(spacing: 7, runSpacing: 6,
+          children: skills.map((s) => Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(8)),
+            child: Text(s, style: const TextStyle(fontSize: 11, color: AppColors.primaryDark, fontWeight: FontWeight.w500)),
+          )).toList()),
+        const SizedBox(height: 14),
+      ],
+
+      if (message.isNotEmpty) ...[
+        _DL('ӨРГӨДЛИЙН МЭДЭГДЭЛ'),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppColors.primaryLight, borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.primary.withValues(alpha: 0.2))),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Icon(Icons.format_quote_rounded, size: 18, color: AppColors.primary),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message,
+              style: const TextStyle(fontSize: 13, color: AppColors.text, height: 1.6))),
+          ])),
+      ],
+      const SizedBox(height: 20),
+    ]);
+  }
+}
+
+// ── Tab 2: CV ──────────────────────────────────────────────────
+class _CvTabContent extends StatelessWidget {
+  final Future<Map<String, dynamic>?> cvFuture;
+  const _CvTabContent({required this.cvFuture});
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<Map<String, dynamic>?>(
+    future: cvFuture,
+    builder: (_, snap) {
+      if (snap.connectionState == ConnectionState.waiting) {
+        return const Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary));
+      }
+      if (snap.data == null) {
+        return const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.description_outlined, size: 48, color: AppColors.faint),
+          SizedBox(height: 12),
+          Text('CV оруулаагүй байна', style: TextStyle(color: AppColors.muted)),
+        ]));
+      }
+      return _CVContent(cv: snap.data!);
+    },
+  );
+}
+
+// ── Tab 3: Schedule ────────────────────────────────────────────
+class _ScheduleTabContent extends StatelessWidget {
+  final Future<List<Map<String, dynamic>>> scheduleFuture;
+  const _ScheduleTabContent({required this.scheduleFuture});
+
+  static const _days = ['Даваа','Мягмар','Лхагва','Пүрэв','Баасан','Бямба','Ням'];
+  static const _colors = [AppColors.primary, AppColors.teal, AppColors.purple, AppColors.amber, AppColors.green, AppColors.red];
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<List<Map<String, dynamic>>>(
+    future: scheduleFuture,
+    builder: (_, snap) {
+      if (snap.connectionState == ConnectionState.waiting) {
+        return const Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary));
+      }
+      final items = snap.data ?? [];
+      if (items.isEmpty) {
+        return const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.calendar_today_outlined, size: 48, color: AppColors.faint),
+          SizedBox(height: 12),
+          Text('Хуваарь оруулаагүй байна', style: TextStyle(color: AppColors.muted)),
+        ]));
+      }
+      final byDay = <int, List<Map<String, dynamic>>>{};
+      for (final it in items) {
+        final d = (it['day'] as num?)?.toInt() ?? 0;
+        byDay.putIfAbsent(d, () => []).add(it);
+      }
+      return ListView(padding: const EdgeInsets.all(16), children: [
+        for (final day in (byDay.keys.toList()..sort())) ...[
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8, top: 4),
+            child: Text(_days[day],
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.muted))),
+          ...byDay[day]!.map((it) {
+            final sh   = (it['startHour'] as num?)?.toInt() ?? 8;
+            final sm   = (it['startMin']  as num?)?.toInt() ?? 0;
+            final eh   = (it['endHour']   as num?)?.toInt() ?? 9;
+            final em   = (it['endMin']    as num?)?.toInt() ?? 0;
+            final subj = it['subject'] as String? ?? '';
+            final room = it['room']    as String? ?? '';
+            final teacher = it['teacher'] as String? ?? '';
+            final type = it['type']    as String? ?? '';
+            final col  = _colors[subj.hashCode.abs() % _colors.length];
+            final time = '${_f(sh, sm)} – ${_f(eh, em)}'
+              '${room.isNotEmpty ? "  ·  $room" : ""}'
+              '${teacher.isNotEmpty ? "  ·  $teacher" : ""}';
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: col.withValues(alpha: 0.07),
+                borderRadius: BorderRadius.circular(10),
+                border: Border(left: BorderSide(color: col, width: 3))),
+              child: Row(children: [
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(subj, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 2),
+                  Text(time, style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+                ])),
+                if (type.isNotEmpty) Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(color: col.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(6)),
+                  child: Text(type, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: col))),
+              ]),
+            );
+          }),
+          const SizedBox(height: 4),
+        ],
+      ]);
+    },
+  );
+
+  String _f(int h, int m) => '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}';
+}
+
+// ── Tab 4: Psych ───────────────────────────────────────────────
+class _PsychTabContent extends StatelessWidget {
+  final Future<Map<String, dynamic>?> studentFuture;
+  const _PsychTabContent({required this.studentFuture});
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<Map<String, dynamic>?>(
+    future: studentFuture,
+    builder: (_, snap) {
+      if (snap.connectionState == ConnectionState.waiting) {
+        return const Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary));
+      }
+      final psych = snap.data?['psych_profile'];
+      if (psych == null) {
+        return const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.psychology_outlined, size: 48, color: AppColors.faint),
+          SizedBox(height: 12),
+          Text('Тест өгөөгүй байна', style: TextStyle(color: AppColors.muted)),
+          SizedBox(height: 4),
+          Text('Оюутан сэтгэлзүйн тест бөглөөгүй байна',
+            style: TextStyle(fontSize: 11, color: AppColors.faint)),
+        ]));
+      }
+      final map = (psych as Map<String, dynamic>);
+      return ListView(padding: const EdgeInsets.all(16), children: [
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [
+              AppColors.primary.withValues(alpha: 0.07),
+              AppColors.purple.withValues(alpha: 0.07),
+            ]),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.primary.withValues(alpha: 0.15))),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Row(children: [
+              Icon(Icons.psychology_outlined, size: 18, color: AppColors.primary),
+              SizedBox(width: 8),
+              Text('Сэтгэлзүйн тестийн үр дүн',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+            ]),
+            const SizedBox(height: 14),
+            ...map.entries.map((e) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(e.key, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.muted)),
+                const SizedBox(height: 4),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
+                  child: Text(e.value.toString(),
+                    style: const TextStyle(fontSize: 13, color: AppColors.text))),
+              ]))),
+          ])),
+      ]);
+    },
+  );
+}
+
+// ── CV content renderer ────────────────────────────────────────
+class _CVContent extends StatelessWidget {
+  final Map<String, dynamic> cv;
+  const _CVContent({required this.cv});
+
+  @override
+  Widget build(BuildContext context) {
+    final summary  = cv['summary']      as String? ?? '';
+    final skills   = (cv['skills']      as List?)?.cast<String>() ?? [];
+    final exps     = (cv['experiences'] as List?) ?? [];
+    final langs    = (cv['languages']   as List?)?.cast<String>() ?? [];
+    final certs    = (cv['certs']       as List?)?.cast<String>() ?? [];
+    final univ     = cv['university']   as String? ?? '';
+    final major    = cv['major']        as String? ?? '';
+    final year     = cv['year']         as String? ?? '';
+    final gpa      = cv['gpa']          as String? ?? '';
+    final email    = cv['email']        as String? ?? '';
+    final phone    = cv['phone']        as String? ?? '';
+
+    return ListView(padding: const EdgeInsets.all(16), children: [
+      if (email.isNotEmpty || phone.isNotEmpty) ...[
+        _DL('ХОЛБОО БАРИХ'),
+        _InfoBox(children: [
+          _DRow(Icons.email_outlined, 'Имэйл', email),
+          _DRow(Icons.phone_outlined, 'Утас',  phone),
+        ]),
+      ],
+
+      if (univ.isNotEmpty) ...[
+        _DL('БОЛОВСРОЛ'),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(color: AppColors.bg, borderRadius: BorderRadius.circular(10)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(univ, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            if (major.isNotEmpty) Text(major, style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+            const SizedBox(height: 6),
+            Row(children: [
+              if (year.isNotEmpty) _MiniChip('$year-р курс', AppColors.primary),
+              if (year.isNotEmpty && gpa.isNotEmpty) const SizedBox(width: 6),
+              if (gpa.isNotEmpty) _MiniChip('GPA: $gpa', AppColors.teal),
+            ]),
+          ])),
+        const SizedBox(height: 14),
+      ],
+
+      if (summary.isNotEmpty) ...[
+        _DL('ТАНИЛЦУУЛГА'),
+        Text(summary, style: const TextStyle(fontSize: 13, color: AppColors.text, height: 1.6)),
+        const SizedBox(height: 14),
+      ],
+
+      if (exps.isNotEmpty) ...[
+        _DL('ТУРШЛАГА'),
+        ...exps.cast<Map>().map((e) => Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppColors.amberLight, borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.amber.withValues(alpha: 0.25))),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Expanded(child: Text(e['role'] as String? ?? '',
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700))),
+              Text(e['period'] as String? ?? '',
+                style: const TextStyle(fontSize: 10, color: AppColors.muted)),
+            ]),
+            if ((e['company'] as String? ?? '').isNotEmpty)
+              Text(e['company'] as String,
+                style: const TextStyle(fontSize: 11, color: AppColors.amber, fontWeight: FontWeight.w600)),
+            if ((e['desc'] as String? ?? '').isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(e['desc'] as String,
+                style: const TextStyle(fontSize: 11, color: AppColors.muted, height: 1.5)),
+            ],
+          ]))),
+      ],
+
+      if (skills.isNotEmpty) ...[
+        _DL('УР ЧАДВАР'),
+        Wrap(spacing: 7, runSpacing: 6,
+          children: skills.map((s) => Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(8)),
+            child: Text(s, style: const TextStyle(fontSize: 11, color: AppColors.primaryDark, fontWeight: FontWeight.w500)),
+          )).toList()),
+        const SizedBox(height: 14),
+      ],
+
+      if (langs.isNotEmpty) ...[
+        _DL('ХЭЛ'),
+        Wrap(spacing: 7, runSpacing: 6,
+          children: langs.map((l) => Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(color: AppColors.tealLight, borderRadius: BorderRadius.circular(8)),
+            child: Text(l, style: const TextStyle(fontSize: 11, color: AppColors.teal, fontWeight: FontWeight.w500)),
+          )).toList()),
+        const SizedBox(height: 14),
+      ],
+
+      if (certs.isNotEmpty) ...[
+        _DL('ГЭРЧИЛГЭЭ'),
+        ...certs.map((c) => Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Row(children: [
+            const Icon(Icons.military_tech_outlined, size: 16, color: AppColors.amber),
+            const SizedBox(width: 8),
+            Expanded(child: Text(c, style: const TextStyle(fontSize: 13, color: AppColors.text))),
+          ]))),
+      ],
+      const SizedBox(height: 20),
+    ]);
+  }
+}
+
+// ── Shared small helpers ───────────────────────────────────────
+class _DL extends StatelessWidget {                             // section divider label
+  final String text;
+  const _DL(this.text);
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Text(text, style: const TextStyle(
+      fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.muted, letterSpacing: 0.8)));
+}
+
+class _InfoBox extends StatelessWidget {
+  final List<Widget> children;
+  const _InfoBox({required this.children});
+  @override
+  Widget build(BuildContext context) => Container(
+    margin: const EdgeInsets.only(bottom: 14),
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(color: AppColors.bg, borderRadius: BorderRadius.circular(10)),
+    child: Column(children: children));
+}
+
+class _DRow extends StatelessWidget {
+  final IconData icon; final String label, value;
+  const _DRow(this.icon, this.label, this.value);
+  @override
+  Widget build(BuildContext context) {
+    if (value.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(children: [
+        Icon(icon, size: 14, color: AppColors.muted),
+        const SizedBox(width: 8),
+        Text(label, style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+        const SizedBox(width: 6),
+        Expanded(child: Text(value,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.text))),
+      ]));
+  }
+}
+
+class _MiniChip extends StatelessWidget {
+  final String label; final Color color;
+  const _MiniChip(this.label, this.color);
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(6)),
+    child: Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color)));
 }
