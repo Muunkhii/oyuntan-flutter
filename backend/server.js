@@ -11,7 +11,50 @@ const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'change_this_secret';
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '20mb' }));
+
+// ── Startup migration ─────────────────────────────────────────
+(async () => {
+  const cols = [
+    `ALTER TABLE companies ADD COLUMN IF NOT EXISTS phone TEXT`,
+    `ALTER TABLE companies ADD COLUMN IF NOT EXISTS employee_count INTEGER`,
+    `ALTER TABLE companies ADD COLUMN IF NOT EXISTS founded_year INTEGER`,
+    `ALTER TABLE companies ADD COLUMN IF NOT EXISTS history TEXT`,
+    `ALTER TABLE companies ADD COLUMN IF NOT EXISTS photo TEXT`,
+    `ALTER TABLE companies ADD COLUMN IF NOT EXISTS cover_photo TEXT`,
+    `ALTER TABLE companies ADD COLUMN IF NOT EXISTS assessment_questions JSONB DEFAULT '[]'`,
+    `CREATE TABLE IF NOT EXISTS assessment_responses (
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+       application_id UUID NOT NULL,
+       company_id UUID NOT NULL,
+       answers JSONB NOT NULL DEFAULT '[]',
+       created_at TIMESTAMPTZ DEFAULT NOW()
+     )`,
+    `CREATE TABLE IF NOT EXISTS messages (
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+       sender_uid UUID NOT NULL,
+       receiver_uid UUID NOT NULL,
+       content TEXT NOT NULL,
+       read BOOLEAN DEFAULT FALSE,
+       created_at TIMESTAMPTZ DEFAULT NOW()
+     )`,
+    `CREATE TABLE IF NOT EXISTS interview_slots (
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+       application_id UUID NOT NULL,
+       company_id UUID NOT NULL,
+       student_id UUID NOT NULL,
+       scheduled_at TIMESTAMPTZ NOT NULL,
+       location TEXT,
+       notes TEXT,
+       status VARCHAR(20) DEFAULT 'proposed',
+       created_at TIMESTAMPTZ DEFAULT NOW()
+     )`,
+    `ALTER TABLE internship_posts ADD COLUMN IF NOT EXISTS view_count INTEGER DEFAULT 0`,
+  ];
+  for (const sql of cols) {
+    await pool.query(sql).catch(e => console.warn('Migration:', e.message));
+  }
+})();
 
 // ── JWT middleware ─────────────────────────────────────────────
 function auth(req, res, next) {
@@ -160,12 +203,29 @@ app.get('/companies/:uid', auth, async (req, res) => {
 });
 
 app.put('/companies/:uid', auth, async (req, res) => {
-  const { name, industry, description, location, website, logoUrl } = req.body;
+  const { name, industry, description, location, website, logoUrl,
+          phone, employeeCount, foundedYear, history, photo, coverPhoto } = req.body;
   try {
     await pool.query(
-      `UPDATE companies SET name=$1, industry=$2, description=$3,
-       location=$4, website=$5, logo_url=$6 WHERE uid=$7`,
-      [name, industry, description, location, website, logoUrl, req.params.uid]
+      `UPDATE companies SET
+        name           = COALESCE($1,  name),
+        industry       = COALESCE($2,  industry),
+        description    = COALESCE($3,  description),
+        location       = COALESCE($4,  location),
+        website        = COALESCE($5,  website),
+        logo_url       = COALESCE($6,  logo_url),
+        phone          = COALESCE($7,  phone),
+        employee_count = COALESCE($8,  employee_count),
+        founded_year   = COALESCE($9,  founded_year),
+        history        = COALESCE($10, history),
+        photo          = COALESCE($11, photo),
+        cover_photo    = COALESCE($12, cover_photo)
+       WHERE uid = $13`,
+      [name ?? null, industry ?? null, description ?? null,
+       location ?? null, website ?? null, logoUrl ?? null,
+       phone ?? null, employeeCount ?? null, foundedYear ?? null,
+       history ?? null, photo ?? null, coverPhoto ?? null,
+       req.params.uid]
     );
     res.json({ message: 'Шинэчлэгдлээ' });
   } catch (e) { res.status(500).json({ message: e.message }); }
@@ -272,10 +332,13 @@ app.get('/applications', auth, async (req, res) => {
     const where = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
     const { rows } = await pool.query(
       `SELECT a.*, s.first_name, s.last_name, s.university, s.major, s.skills, s.bio, s.year,
-              p.title as post_title
+              s.photo as student_photo,
+              p.title as post_title, c.name as company_name, c.photo as company_photo,
+              c.industry as company_industry
        FROM applications a
        JOIN students s ON s.uid = a.student_id
        LEFT JOIN internship_posts p ON p.id = a.post_id
+       LEFT JOIN companies c ON c.uid = a.company_id
        ${where}
        ORDER BY a.created_at DESC`,
       params
@@ -335,7 +398,7 @@ app.get('/internships', auth, async (req, res) => {
            WHERE i.student_id = $1 ORDER BY i.start_date DESC`;
       params = [studentId];
     } else {
-      q = `SELECT i.*, s.first_name, s.last_name, p.title FROM internships i
+      q = `SELECT i.*, s.first_name, s.last_name, s.photo, s.university, s.major, p.title FROM internships i
            JOIN students s ON s.uid = i.student_id
            JOIN internship_posts p ON p.id = i.post_id
            WHERE i.company_id = $1 ORDER BY i.start_date DESC`;
@@ -424,7 +487,7 @@ app.get('/diary', auth, async (req, res) => {
 
 app.post('/reviews', auth, async (req, res) => {
   const { internshipId, companyId, envScore, mentorScore, learnScore, relationScore, wouldReturn, comment } = req.body;
-  const avg = ((envScore + mentorScore + learnScore + relationScore) / 4).toFixed(1);
+  const avg = parseFloat(((envScore + mentorScore + learnScore + relationScore) / 4).toFixed(1));
   try {
     const { rows: [review] } = await pool.query(
       `INSERT INTO reviews (internship_id, student_id, company_id, env_score, mentor_score,
@@ -440,7 +503,7 @@ app.post('/reviews', auth, async (req, res) => {
     );
     await pool.query(
       'UPDATE companies SET avg_score = $1, review_count = $2 WHERE uid = $3',
-      [parseFloat(all[0].avg).toFixed(1), parseInt(all[0].cnt), companyId]
+      [parseFloat(parseFloat(all[0].avg).toFixed(1)), parseInt(all[0].cnt), companyId]
     );
     res.json(review);
   } catch (e) {
@@ -474,7 +537,7 @@ app.get('/reviews', auth, async (req, res) => {
 app.post('/student-reviews', auth, async (req, res) => {
   const { internshipId, studentId, workScore, attitudeScore, punctualityScore, learningScore, wouldRehire, comment } = req.body;
   const companyId = req.user.uid;
-  const avg = ((workScore + attitudeScore + punctualityScore + learningScore) / 4).toFixed(1);
+  const avg = parseFloat(((workScore + attitudeScore + punctualityScore + learningScore) / 4).toFixed(1));
   try {
     const { rows: [rev] } = await pool.query(
       `INSERT INTO student_reviews
@@ -620,6 +683,185 @@ app.put('/notifications/read-all', auth, async (req, res) => {
       [req.user.uid]
     );
     res.json({ message: 'ok' });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// POST VIEW TRACKING
+// ═══════════════════════════════════════════════════════════════
+app.post('/posts/:id/view', auth, async (req, res) => {
+  try {
+    await pool.query(
+      `UPDATE internship_posts SET view_count = COALESCE(view_count,0) + 1 WHERE id = $1`,
+      [req.params.id]
+    );
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// MESSAGES
+// ═══════════════════════════════════════════════════════════════
+app.get('/messages/unread-count', auth, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT COUNT(*) as count FROM messages WHERE receiver_uid=$1 AND read=FALSE`,
+      [req.user.uid]
+    );
+    res.json({ count: parseInt(rows[0].count) });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.get('/messages/conversations', auth, async (req, res) => {
+  try {
+    const uid = req.user.uid;
+    const { rows } = await pool.query(
+      `SELECT DISTINCT ON (other_uid)
+         other_uid,
+         (SELECT name FROM companies WHERE uid=other_uid)   as company_name,
+         (SELECT CONCAT(first_name,' ',last_name) FROM students WHERE uid=other_uid) as student_name,
+         (SELECT photo FROM companies WHERE uid=other_uid)  as company_photo,
+         (SELECT photo FROM students  WHERE uid=other_uid)  as student_photo,
+         m.content as last_message,
+         m.created_at,
+         (SELECT COUNT(*) FROM messages WHERE sender_uid=other_uid AND receiver_uid=$1 AND read=FALSE) as unread
+       FROM (
+         SELECT CASE WHEN sender_uid=$1 THEN receiver_uid ELSE sender_uid END as other_uid,
+                content, created_at
+         FROM messages WHERE sender_uid=$1 OR receiver_uid=$1
+       ) m
+       ORDER BY other_uid, m.created_at DESC`,
+      [uid]
+    );
+    res.json(rows);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.get('/messages', auth, async (req, res) => {
+  const { with: withUid } = req.query;
+  const uid = req.user.uid;
+  try {
+    const { rows } = await pool.query(
+      `SELECT * FROM messages
+       WHERE (sender_uid=$1 AND receiver_uid=$2) OR (sender_uid=$2 AND receiver_uid=$1)
+       ORDER BY created_at ASC`,
+      [uid, withUid]
+    );
+    await pool.query(
+      `UPDATE messages SET read=TRUE WHERE sender_uid=$2 AND receiver_uid=$1 AND read=FALSE`,
+      [uid, withUid]
+    );
+    res.json(rows);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.post('/messages', auth, async (req, res) => {
+  const { toUid, content } = req.body;
+  try {
+    const { rows: [msg] } = await pool.query(
+      `INSERT INTO messages (sender_uid, receiver_uid, content) VALUES ($1,$2,$3) RETURNING *`,
+      [req.user.uid, toUid, content]
+    );
+    res.json(msg);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// INTERVIEW SLOTS
+// ═══════════════════════════════════════════════════════════════
+app.post('/interview-slots', auth, async (req, res) => {
+  const { applicationId, studentId, scheduledAt, location, notes } = req.body;
+  try {
+    const { rows: [slot] } = await pool.query(
+      `INSERT INTO interview_slots (application_id, company_id, student_id, scheduled_at, location, notes)
+       VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+      [applicationId, req.user.uid, studentId, scheduledAt, location || null, notes || null]
+    );
+    await pool.query(
+      `INSERT INTO notifications (to_uid, type, post_id) VALUES ($1,'interview_scheduled',$2)`,
+      [studentId, applicationId]
+    );
+    res.json(slot);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.get('/interview-slots', auth, async (req, res) => {
+  const { applicationId, studentId } = req.query;
+  try {
+    const conds = [], params = [];
+    if (applicationId) { params.push(applicationId); conds.push(`application_id=$${params.length}`); }
+    if (studentId)     { params.push(studentId);     conds.push(`student_id=$${params.length}`); }
+    const where = conds.length ? 'WHERE ' + conds.join(' AND ') : '';
+    const { rows } = await pool.query(
+      `SELECT * FROM interview_slots ${where} ORDER BY scheduled_at ASC`, params
+    );
+    res.json(rows);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.put('/interview-slots/:id', auth, async (req, res) => {
+  const { status } = req.body;
+  try {
+    await pool.query(`UPDATE interview_slots SET status=$1 WHERE id=$2`, [status, req.params.id]);
+    res.json({ message: 'ok' });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// ASSESSMENT
+// ═══════════════════════════════════════════════════════════════
+
+app.get('/companies/:uid/assessment', auth, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT assessment_questions FROM companies WHERE uid = $1`, [req.params.uid]
+    );
+    if (!rows.length) return res.json({ questions: [] });
+    res.json({ questions: rows[0].assessment_questions || [] });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.put('/companies/:uid/assessment', auth, async (req, res) => {
+  const { questions } = req.body;
+  try {
+    await pool.query(
+      `UPDATE companies SET assessment_questions = $1 WHERE uid = $2`,
+      [JSON.stringify(questions || []), req.params.uid]
+    );
+    res.json({ message: 'Шалгалт хадгалагдлаа' });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.post('/assessment-responses', auth, async (req, res) => {
+  const { applicationId, companyId, answers } = req.body;
+  try {
+    const existing = await pool.query(
+      `SELECT id FROM assessment_responses WHERE application_id = $1`, [applicationId]
+    );
+    if (existing.rows.length) {
+      await pool.query(
+        `UPDATE assessment_responses SET answers = $1 WHERE application_id = $2`,
+        [JSON.stringify(answers || []), applicationId]
+      );
+    } else {
+      await pool.query(
+        `INSERT INTO assessment_responses (application_id, company_id, answers)
+         VALUES ($1, $2, $3)`,
+        [applicationId, companyId, JSON.stringify(answers || [])]
+      );
+    }
+    res.json({ message: 'Хариулт хадгалагдлаа' });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.get('/assessment-responses/:applicationId', auth, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT * FROM assessment_responses WHERE application_id = $1`,
+      [req.params.applicationId]
+    );
+    if (!rows.length) return res.status(404).json({ message: 'Олдсонгүй' });
+    res.json(rows[0]);
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 

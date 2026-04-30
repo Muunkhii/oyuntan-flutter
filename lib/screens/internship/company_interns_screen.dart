@@ -1,10 +1,12 @@
 // lib/screens/internship/company_interns_screen.dart
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../theme/app_theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
+import '../messages/messages_screen.dart';
 
 class CompanyInternsScreen extends StatefulWidget {
   const CompanyInternsScreen({super.key});
@@ -102,6 +104,47 @@ class _PostsTabState extends State<_PostsTab> with AutomaticKeepAliveClientMixin
     setState(() { _future = InternshipService().getCompanyPosts(widget.companyId); });
   }
 
+  void _editPost(Map<String, dynamic> post) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) => _EditPostSheet(post: post, onDone: _load),
+    );
+  }
+
+  Future<void> _deletePost(String postId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Зар устгах', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+        content: const Text('Энэ зарыг устгах уу? Устгасан зарыг сэргээх боломжгүй.',
+          style: TextStyle(fontSize: 13, color: AppColors.muted)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Болих')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.red, foregroundColor: Colors.white, elevation: 0),
+            child: const Text('Устгах'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true || !mounted) return;
+    try {
+      await InternshipService().deletePost(postId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Зар устгагдлаа'),
+        backgroundColor: AppColors.red, behavior: SnackBarBehavior.floating));
+      _load();
+    } on ApiException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(e.message), backgroundColor: AppColors.red, behavior: SnackBarBehavior.floating));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -130,42 +173,64 @@ class _PostsTabState extends State<_PostsTab> with AutomaticKeepAliveClientMixin
               final active = p['is_active'] as bool? ?? true;
               return _Card(
                 margin: const EdgeInsets.only(bottom: 10),
-                onTap: count > 0 ? () => context.push('/company/swipe/${p['id']}') : null,
-                child: Row(children: [
-                  Container(
-                    width: 44, height: 44,
-                    decoration: BoxDecoration(
-                      color: active ? AppColors.primaryLight : AppColors.bg,
-                      borderRadius: BorderRadius.circular(10)),
-                    child: Icon(Icons.work_rounded, size: 22, color: active ? AppColors.primary : AppColors.faint)),
-                  const SizedBox(width: 12),
-                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(p['title'] as String? ?? '',
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.text)),
-                    const SizedBox(height: 2),
-                    Row(children: [
-                      if (p['location'] != null) ...[
-                        const Icon(Icons.location_on_outlined, size: 11, color: AppColors.muted),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Container(
+                      width: 44, height: 44,
+                      decoration: BoxDecoration(
+                        color: active ? AppColors.primaryLight : AppColors.bg,
+                        borderRadius: BorderRadius.circular(10)),
+                      child: Icon(Icons.work_rounded, size: 22, color: active ? AppColors.primary : AppColors.faint)),
+                    const SizedBox(width: 12),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(p['title'] as String? ?? '',
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.text)),
+                      const SizedBox(height: 2),
+                      Row(children: [
+                        if (p['location'] != null) ...[
+                          const Icon(Icons.location_on_outlined, size: 11, color: AppColors.muted),
+                          const SizedBox(width: 2),
+                          Text(p['location'] as String, style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+                          const SizedBox(width: 8),
+                        ],
+                        const Icon(Icons.calendar_today_outlined, size: 11, color: AppColors.muted),
                         const SizedBox(width: 2),
-                        Text(p['location'] as String, style: const TextStyle(fontSize: 11, color: AppColors.muted)),
-                        const SizedBox(width: 8),
-                      ],
-                      const Icon(Icons.calendar_today_outlined, size: 11, color: AppColors.muted),
-                      const SizedBox(width: 2),
-                      Text('${p['duration_days'] ?? 0} өдөр', style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+                        Text('${p['duration_days'] ?? 0} өдөр', style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+                      ]),
+                    ])),
+                    const SizedBox(width: 8),
+                    Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                      _Chip(
+                        count > 0 ? '$count хүсэлт' : 'Хүсэлт байхгүй',
+                        bg: count > 0 ? AppColors.primaryLight : AppColors.bg,
+                        fg: count > 0 ? AppColors.primary : AppColors.faint),
+                      const SizedBox(height: 4),
+                      _Chip(
+                        active ? 'Идэвхтэй' : 'Хаалттай',
+                        bg: active ? AppColors.tealLight : AppColors.bg,
+                        fg: active ? AppColors.teal : AppColors.faint),
                     ]),
-                  ])),
-                  const SizedBox(width: 8),
-                  Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                    _Chip(
-                      count > 0 ? '$count хүсэлт' : 'Хүсэлт байхгүй',
-                      bg: count > 0 ? AppColors.primaryLight : AppColors.bg,
-                      fg: count > 0 ? AppColors.primary : AppColors.faint),
-                    const SizedBox(height: 4),
-                    _Chip(
-                      active ? 'Идэвхтэй' : 'Хаалттай',
-                      bg: active ? AppColors.tealLight : AppColors.bg,
-                      fg: active ? AppColors.teal : AppColors.faint),
+                  ]),
+                  const SizedBox(height: 10),
+                  const Divider(height: 1),
+                  const SizedBox(height: 8),
+                  Row(children: [
+                    if (count > 0) ...[
+                      Expanded(child: _ActionBtn(
+                        'CV харах', Icons.people_outline_rounded,
+                        AppColors.teal, AppColors.tealLight,
+                        () => context.push('/company/swipe/${p['id']}'))),
+                      const SizedBox(width: 8),
+                    ],
+                    Expanded(child: _ActionBtn(
+                      'Засах', Icons.edit_outlined,
+                      AppColors.primary, AppColors.primaryLight,
+                      () => _editPost(p))),
+                    const SizedBox(width: 8),
+                    Expanded(child: _ActionBtn(
+                      'Устгах', Icons.delete_outline_rounded,
+                      AppColors.red, AppColors.redLight,
+                      () => _deletePost(p['id'] as String))),
                   ]),
                 ]),
               );
@@ -406,31 +471,29 @@ class _InternsTabState extends State<_InternsTab> with AutomaticKeepAliveClientM
   }
 }
 
-// ── Intern card with expandable diary + actions ───────────────
-class _InternCard extends StatefulWidget {
+// ── Intern card ───────────────────────────────────────────────
+class _InternCard extends StatelessWidget {
   final Map<String, dynamic> data;
   final bool isActive;
   final VoidCallback onRefresh;
   const _InternCard({required this.data, required this.isActive, required this.onRefresh});
-  @override State<_InternCard> createState() => _InternCardState();
-}
-
-class _InternCardState extends State<_InternCard> {
-  bool _expanded = false;
 
   @override
   Widget build(BuildContext context) {
-    final d          = widget.data;
-    final firstName  = d['first_name'] as String? ?? '';
-    final lastName   = d['last_name']  as String? ?? '';
-    final name       = '$lastName $firstName'.trim();
-    final title      = d['title']      as String? ?? '';
-    final internId   = d['id']         as String;
-    final studentId  = d['student_id'] as String? ?? '';
-    final completed  = (d['completed_days'] as num?)?.toInt() ?? 0;
-    final total      = (d['duration_days']  as num?)?.toInt() ?? 1;
-    final progress   = (completed / total).clamp(0.0, 1.0);
+    final d            = data;
+    final firstName    = d['first_name'] as String? ?? '';
+    final lastName     = d['last_name']  as String? ?? '';
+    final name         = '$lastName $firstName'.trim();
+    final title        = d['title']      as String? ?? '';
+    final internId     = d['id']         as String;
+    final studentId    = d['student_id'] as String? ?? '';
+    final completed    = (d['completed_days'] as num?)?.toInt() ?? 0;
+    final total        = (d['duration_days']  as num?)?.toInt() ?? 1;
+    final progress     = (completed / total).clamp(0.0, 1.0);
     final isTerminated = d['status'] == 'terminated';
+    final photo        = d['photo'] as String?;
+    final univ         = d['university'] as String? ?? '';
+    final major        = d['major']      as String? ?? '';
 
     return _Card(
       margin: const EdgeInsets.only(bottom: 10),
@@ -438,27 +501,28 @@ class _InternCardState extends State<_InternCard> {
 
         // Header row
         Row(children: [
-          _InitialsAvatar(name: name),
+          _StudentPhoto(photo: photo, name: name, size: 44),
           const SizedBox(width: 10),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.text)),
             Text(title, style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+            if (univ.isNotEmpty)
+              Text(univ + (major.isNotEmpty ? ' · $major' : ''),
+                style: const TextStyle(fontSize: 10, color: AppColors.faint)),
           ])),
           if (isTerminated)
             const _Chip('Цуцлагдсан', bg: AppColors.redLight, fg: AppColors.red)
-          else if (!widget.isActive)
+          else if (!isActive)
             const _Chip('Дууссан', bg: AppColors.tealLight, fg: AppColors.teal)
           else
             GestureDetector(
-              onTap: () => setState(() => _expanded = !_expanded),
-              child: _Chip(
-                _expanded ? 'Хаах ▲' : 'Дэлгэрэнгүй ▼',
-                bg: AppColors.primaryLight, fg: AppColors.primary),
+              onTap: () => _openDetail(context, d),
+              child: const _Chip('Дэлгэрэнгүй ▼', bg: AppColors.primaryLight, fg: AppColors.primary),
             ),
         ]),
 
         // Progress (active only)
-        if (widget.isActive && !isTerminated) ...[
+        if (isActive && !isTerminated) ...[
           const SizedBox(height: 10),
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
             Text('$completed / $total өдөр',
@@ -488,37 +552,44 @@ class _InternCardState extends State<_InternCard> {
           ),
         ],
 
-        // Diary timeline
-        if (_expanded && widget.isActive && !isTerminated) ...[
-          const SizedBox(height: 14),
-          _DiaryTimeline(internshipId: internId),
-        ],
-
         // Action buttons
-        if (widget.isActive && !isTerminated) ...[
-          const SizedBox(height: 12),
-          const Divider(height: 1),
-          const SizedBox(height: 10),
+        const SizedBox(height: 12),
+        const Divider(height: 1),
+        const SizedBox(height: 10),
+        if (isActive && !isTerminated)
           Row(children: [
+            Expanded(child: _ActionBtn(
+              'Дэлгэрэнгүй', Icons.person_outline_rounded,
+              AppColors.primary, AppColors.primaryLight,
+              () => _openDetail(context, d))),
+            const SizedBox(width: 8),
             Expanded(child: _ActionBtn(
               'Дуусгах', Icons.stop_circle_outlined,
               AppColors.red, AppColors.redLight,
-              () => _showTerminate(context, internId),
-            )),
-          ]),
-        ] else if (!widget.isActive || isTerminated) ...[
-          const SizedBox(height: 12),
-          const Divider(height: 1),
-          const SizedBox(height: 10),
+              () => _showTerminate(context, internId))),
+          ])
+        else
           Row(children: [
+            Expanded(child: _ActionBtn(
+              'Дэлгэрэнгүй', Icons.person_outline_rounded,
+              AppColors.primary, AppColors.primaryLight,
+              () => _openDetail(context, d))),
+            const SizedBox(width: 8),
             Expanded(child: _ActionBtn(
               'Оюутан үнэлэх', Icons.star_outline_rounded,
               AppColors.amber, AppColors.amberLight,
-              () => _showRateStudent(context, internId, studentId, name),
-            )),
+              () => _showRateStudent(context, internId, studentId, name))),
           ]),
-        ],
       ]),
+    );
+  }
+
+  void _openDetail(BuildContext ctx, Map<String, dynamic> d) {
+    showModalBottomSheet(
+      context: ctx,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _InternDetailSheet(data: d),
     );
   }
 
@@ -527,10 +598,7 @@ class _InternCardState extends State<_InternCard> {
       context: ctx,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (_) => _TerminateSheet(
-        internshipId: internId,
-        onDone: widget.onRefresh,
-      ),
+      builder: (_) => _TerminateSheet(internshipId: internId, onDone: onRefresh),
     );
   }
 
@@ -540,70 +608,317 @@ class _InternCardState extends State<_InternCard> {
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (_) => _RateStudentSheet(
-        internshipId: internId,
-        studentId: studentId,
-        studentName: studentName,
-        onDone: widget.onRefresh,
+        internshipId: internId, studentId: studentId,
+        studentName: studentName, onDone: onRefresh),
+    );
+  }
+}
+
+// ── Intern detail sheet ───────────────────────────────────────
+class _InternDetailSheet extends StatefulWidget {
+  final Map<String, dynamic> data;
+  const _InternDetailSheet({required this.data});
+  @override State<_InternDetailSheet> createState() => _InternDetailSheetState();
+}
+
+class _InternDetailSheetState extends State<_InternDetailSheet>
+    with SingleTickerProviderStateMixin {
+  late TabController _tab;
+  late Future<Map<String, dynamic>?> _studentFuture;
+  late Future<Map<String, dynamic>?> _cvFuture;
+  late Future<List<Map<String, dynamic>>> _diaryFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _tab = TabController(length: 3, vsync: this);
+    final sid      = widget.data['student_id'] as String? ?? '';
+    final internId = widget.data['id']         as String? ?? '';
+    _studentFuture = ApiClient.get('/students/$sid').then((v) => v as Map<String, dynamic>?).catchError((_) => null);
+    _cvFuture      = CVService().get(sid);
+    _diaryFuture   = DiaryService().getEntries(internId);
+  }
+
+  @override
+  void dispose() { _tab.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    final d          = widget.data;
+    final firstName  = d['first_name'] as String? ?? '';
+    final lastName   = d['last_name']  as String? ?? '';
+    final name       = '$lastName $firstName'.trim();
+    final title      = d['title']      as String? ?? '';
+    final univ       = d['university'] as String? ?? '';
+    final major      = d['major']      as String? ?? '';
+    final photo      = d['photo']      as String?;
+    final completed  = (d['completed_days'] as num?)?.toInt() ?? 0;
+    final total      = (d['duration_days']  as num?)?.toInt() ?? 1;
+    final progress   = (completed / total).clamp(0.0, 1.0);
+    final isActive   = d['status'] == 'active';
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.92, maxChildSize: 0.97, minChildSize: 0.5,
+      builder: (_, ctrl) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        child: Column(children: [
+          const SizedBox(height: 10),
+          Container(width: 40, height: 4,
+            decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2))),
+
+          // Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+            child: Row(children: [
+              _StudentPhoto(photo: photo, name: name, size: 52),
+              const SizedBox(width: 12),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(name, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+                if (title.isNotEmpty)
+                  Text(title, style: const TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w500)),
+                if (univ.isNotEmpty || major.isNotEmpty)
+                  Text([univ, major].where((s) => s.isNotEmpty).join(' · '),
+                    style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+              ])),
+              _Chip(
+                isActive ? 'Идэвхтэй' : 'Дууссан',
+                bg: isActive ? AppColors.tealLight : AppColors.bg,
+                fg: isActive ? AppColors.teal : AppColors.muted),
+            ]),
+          ),
+
+          // Progress bar
+          if (isActive) Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: Column(children: [
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                Text('$completed / $total өдөр',
+                  style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+                Text('${(progress * 100).round()}%',
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.text)),
+              ]),
+              const SizedBox(height: 6),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: progress, minHeight: 6,
+                  backgroundColor: AppColors.bg, color: AppColors.teal)),
+            ]),
+          ),
+
+          const SizedBox(height: 8),
+          TabBar(
+            controller: _tab,
+            labelColor: AppColors.primary,
+            unselectedLabelColor: AppColors.muted,
+            indicatorColor: AppColors.primary,
+            indicatorSize: TabBarIndicatorSize.label,
+            labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            unselectedLabelStyle: const TextStyle(fontSize: 12),
+            tabs: const [Tab(text: 'Тэмдэглэл'), Tab(text: 'Профайл'), Tab(text: 'CV')],
+          ),
+
+          Expanded(child: TabBarView(controller: _tab, children: [
+            _FullDiaryTab(future: _diaryFuture),
+            _InternProfileTab(studentFuture: _studentFuture, internData: d),
+            _CvTabContent(cvFuture: _cvFuture),
+          ])),
+
+          // Bottom: message button
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border(top: BorderSide(color: AppColors.border.withValues(alpha: 0.5)))),
+            padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + 16),
+            child: _ActionBtn(
+              'Мессеж илгээх', Icons.chat_bubble_outline_rounded,
+              AppColors.primary, AppColors.primaryLight,
+              () => Navigator.push(context, MaterialPageRoute(
+                builder: (_) => ChatScreen(
+                  otherUid: d['student_id'] as String? ?? '',
+                  otherName: name,
+                  otherPhoto: photo)))),
+          ),
+        ]),
       ),
     );
   }
 }
 
-class _DiaryTimeline extends StatefulWidget {
-  final String internshipId;
-  const _DiaryTimeline({required this.internshipId});
-  @override State<_DiaryTimeline> createState() => _DiaryTimelineState();
-}
-
-class _DiaryTimelineState extends State<_DiaryTimeline> {
-  late Future<List<Map<String, dynamic>>> _future;
+// ── Full diary tab ─────────────────────────────────────────────
+class _FullDiaryTab extends StatelessWidget {
+  final Future<List<Map<String, dynamic>>> future;
+  const _FullDiaryTab({required this.future});
 
   @override
-  void initState() {
-    super.initState();
-    _future = DiaryService().getEntries(widget.internshipId);
-  }
+  Widget build(BuildContext context) => FutureBuilder<List<Map<String, dynamic>>>(
+    future: future,
+    builder: (_, snap) {
+      if (snap.connectionState == ConnectionState.waiting) {
+        return const Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2));
+      }
+      final entries = snap.data ?? [];
+      if (entries.isEmpty) {
+        return const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.book_outlined, size: 48, color: AppColors.faint),
+          SizedBox(height: 12),
+          Text('Тэмдэглэл байхгүй байна', style: TextStyle(color: AppColors.muted)),
+          SizedBox(height: 4),
+          Text('Оюутан дадлагын тэмдэглэлээ бичээгүй байна',
+            style: TextStyle(fontSize: 11, color: AppColors.faint)),
+        ]));
+      }
+      return ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: entries.length,
+        itemBuilder: (_, i) {
+          final e      = entries[i];
+          final isLast = i == entries.length - 1;
+          return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Column(children: [
+              Container(width: 10, height: 10,
+                decoration: const BoxDecoration(color: AppColors.teal, shape: BoxShape.circle)),
+              if (!isLast) Container(width: 2, height: 80, color: AppColors.border),
+            ]),
+            const SizedBox(width: 12),
+            Expanded(child: Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.bg,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.border, width: 0.5)),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(color: AppColors.tealLight, borderRadius: BorderRadius.circular(6)),
+                    child: Text('${e['day_number']}-р өдөр',
+                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.teal))),
+                  if ((e['mood'] as String? ?? '').isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    Text(e['mood'] as String, style: const TextStyle(fontSize: 16)),
+                  ],
+                ]),
+                const SizedBox(height: 8),
+                Text(e['work_done'] as String? ?? '',
+                  style: const TextStyle(fontSize: 13, color: AppColors.text, height: 1.5)),
+                if ((e['interactions'] as String? ?? '').isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text('Харилцаа: ${e['interactions']}',
+                    style: const TextStyle(fontSize: 11, color: AppColors.muted, height: 1.4)),
+                ],
+                if ((e['categories'] as List? ?? []).isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Wrap(spacing: 5, runSpacing: 4,
+                    children: (e['categories'] as List).cast<String>().map((c) =>
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(4)),
+                        child: Text(c, style: const TextStyle(fontSize: 9, color: AppColors.primary, fontWeight: FontWeight.w600)),
+                      )).toList()),
+                ],
+              ]),
+            )),
+          ]);
+        },
+      );
+    },
+  );
+}
+
+// ── Intern profile tab ─────────────────────────────────────────
+class _InternProfileTab extends StatelessWidget {
+  final Future<Map<String, dynamic>?> studentFuture;
+  final Map<String, dynamic> internData;
+  const _InternProfileTab({required this.studentFuture, required this.internData});
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<Map<String, dynamic>>>(
-      future: _future,
+    final d    = internData;
+    final univ = d['university'] as String? ?? '';
+    final major = d['major']    as String? ?? '';
+
+    return FutureBuilder<Map<String, dynamic>?>(
+      future: studentFuture,
       builder: (_, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
-          return const SizedBox(height: 24, child: Center(
-            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary)));
+          return const Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2));
         }
-        final entries = snap.data ?? [];
-        if (entries.isEmpty) {
-          return const Text('Тэмдэглэл байхгүй',
-            style: TextStyle(fontSize: 11, color: AppColors.muted));
-        }
-        return Column(
-          children: entries.take(5).toList().asMap().entries.map((e) {
-            final d      = e.value;
-            final isLast = e.key == entries.take(5).length - 1;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Column(children: [
-                  Container(width: 8, height: 8,
-                    decoration: const BoxDecoration(color: AppColors.teal, shape: BoxShape.circle)),
-                  if (!isLast) Container(width: 1, height: 28, color: AppColors.border),
-                ]),
-                const SizedBox(width: 10),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('${d['day_number']}-р өдөр',
-                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.text)),
-                  Text(d['work_done'] as String? ?? '',
-                    maxLines: 2, overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 10, color: AppColors.muted)),
-                ])),
-              ]),
-            );
-          }).toList(),
-        );
+        final s      = snap.data ?? {};
+        final phone  = s['phone']  as String? ?? '';
+        final gpa    = (s['gpa'] ?? '').toString();
+        final bio    = s['bio']    as String? ?? '';
+        final skills = (s['skills'] as List?)?.cast<String>() ?? [];
+        final email  = s['email']  as String? ?? '';
+        final uUniv  = s['university'] as String? ?? univ;
+        final uMajor = s['major']      as String? ?? major;
+        final year   = s['year'];
+
+        return ListView(padding: const EdgeInsets.all(16), children: [
+          _DL('ХУВИЙН МЭДЭЭЛЭЛ'),
+          _InfoBox(children: [
+            _DRow(Icons.school_outlined,    'Сургууль', uUniv),
+            _DRow(Icons.menu_book_outlined, 'Мэргэжил', uMajor),
+            if (year != null) _DRow(Icons.class_outlined, 'Курс', '$year-р курс'),
+            if (phone.isNotEmpty) _DRow(Icons.phone_outlined, 'Утас', phone),
+            if (email.isNotEmpty) _DRow(Icons.email_outlined, 'Имэйл', email),
+            if (gpa.isNotEmpty && gpa != 'null') _DRow(Icons.grade_outlined, 'GPA', gpa),
+          ]),
+
+          if (bio.isNotEmpty) ...[
+            _DL('ТАНИЛЦУУЛГА'),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: AppColors.bg, borderRadius: BorderRadius.circular(10)),
+              child: Text(bio, style: const TextStyle(fontSize: 13, color: AppColors.text, height: 1.6))),
+            const SizedBox(height: 14),
+          ],
+
+          if (skills.isNotEmpty) ...[
+            _DL('УР ЧАДВАР'),
+            Wrap(spacing: 7, runSpacing: 6,
+              children: skills.map((sk) => Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(8)),
+                child: Text(sk, style: const TextStyle(fontSize: 11, color: AppColors.primaryDark, fontWeight: FontWeight.w500)),
+              )).toList()),
+            const SizedBox(height: 14),
+          ],
+
+          const SizedBox(height: 20),
+        ]);
       },
     );
+  }
+}
+
+// ── Student photo avatar ───────────────────────────────────────
+class _StudentPhoto extends StatelessWidget {
+  final String? photo;
+  final String name;
+  final double size;
+  const _StudentPhoto({required this.name, this.photo, required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    if (photo != null && photo!.isNotEmpty) {
+      try {
+        return CircleAvatar(
+          radius: size / 2,
+          backgroundImage: MemoryImage(base64Decode(photo!)));
+      } catch (_) {}
+    }
+    const bgs = [AppColors.blueLight, AppColors.tealLight, AppColors.purpleLight, AppColors.primaryLight];
+    const fgs = [AppColors.blue, AppColors.teal, AppColors.purple, AppColors.primary];
+    final idx  = name.isNotEmpty ? name.codeUnitAt(0) % 4 : 0;
+    final init = name.length >= 2 ? name.substring(0, 2) : name;
+    return CircleAvatar(
+      radius: size / 2,
+      backgroundColor: bgs[idx],
+      child: Text(init, style: TextStyle(fontSize: size * 0.26, fontWeight: FontWeight.w600, color: fgs[idx])));
   }
 }
 
@@ -983,17 +1298,20 @@ class _ApplicantDetailSheetState extends State<_ApplicantDetailSheet>
   late Future<Map<String, dynamic>?> _cvFuture;
   late Future<List<Map<String, dynamic>>> _scheduleFuture;
   late Future<Map<String, dynamic>?> _studentFuture;
+  late Future<Map<String, dynamic>?> _assessmentFuture;
   bool _showRejectInput = false;
   final _rejectCtrl = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 4, vsync: this);
+    _tab = TabController(length: 5, vsync: this);
     final sid   = widget.application['student_id'] as String? ?? '';
-    _cvFuture       = CVService().get(sid);
-    _scheduleFuture = ScheduleService().getSchedule(sid);
-    _studentFuture  = ApiClient.get('/students/$sid').then((v) => v as Map<String, dynamic>?);
+    final appId = widget.application['id']         as String? ?? '';
+    _cvFuture          = CVService().get(sid);
+    _scheduleFuture    = ScheduleService().getSchedule(sid);
+    _studentFuture     = ApiClient.get('/students/$sid').then((v) => v as Map<String, dynamic>?);
+    _assessmentFuture  = AssessmentService().getAnswers(appId);
   }
 
   @override
@@ -1048,7 +1366,7 @@ class _ApplicantDetailSheetState extends State<_ApplicantDetailSheet>
             indicatorSize: TabBarIndicatorSize.label,
             labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
             unselectedLabelStyle: const TextStyle(fontSize: 12),
-            tabs: const [Tab(text: 'Профайл'), Tab(text: 'CV'), Tab(text: 'Хуваарь'), Tab(text: 'Тест')],
+            tabs: const [Tab(text: 'Профайл'), Tab(text: 'CV'), Tab(text: 'Хуваарь'), Tab(text: 'Тест'), Tab(text: 'Шалгалт')],
           ),
 
           // Content
@@ -1058,6 +1376,7 @@ class _ApplicantDetailSheetState extends State<_ApplicantDetailSheet>
               _CvTabContent(cvFuture: _cvFuture),
               _ScheduleTabContent(scheduleFuture: _scheduleFuture),
               _PsychTabContent(studentFuture: _studentFuture),
+              _AssessmentAnswersTab(assessmentFuture: _assessmentFuture),
             ]),
           ),
 
@@ -1091,22 +1410,48 @@ class _ApplicantDetailSheetState extends State<_ApplicantDetailSheet>
                   ]))
               : Padding(
                   padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + 16),
-                  child: Row(children: [
-                    Expanded(child: OutlinedButton.icon(
-                      onPressed: () => setState(() => _showRejectInput = true),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.red, side: const BorderSide(color: AppColors.red),
-                        padding: const EdgeInsets.symmetric(vertical: 13)),
-                      icon: const Icon(Icons.close_rounded, size: 16),
-                      label: const Text('Татгалзах', style: TextStyle(fontWeight: FontWeight.w600)))),
-                    const SizedBox(width: 12),
-                    Expanded(child: ElevatedButton.icon(
-                      onPressed: () { Navigator.pop(context); widget.onAccept(); },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.teal, foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 13)),
-                      icon: const Icon(Icons.check_rounded, size: 16),
-                      label: const Text('Зөвшөөрөх', style: TextStyle(fontWeight: FontWeight.w600)))),
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    // Message button
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          final a      = widget.application;
+                          final fn     = a['first_name'] as String? ?? '';
+                          final ln     = a['last_name']  as String? ?? '';
+                          final sname  = '$ln $fn'.trim();
+                          final sid    = a['student_id'] as String? ?? '';
+                          final sphoto = a['student_photo'] as String?;
+                          Navigator.push(context, MaterialPageRoute(
+                            builder: (_) => ChatScreen(
+                              otherUid: sid, otherName: sname, otherPhoto: sphoto)));
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                          side: const BorderSide(color: AppColors.primary),
+                          padding: const EdgeInsets.symmetric(vertical: 12)),
+                        icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16),
+                        label: const Text('Мессеж илгээх', style: TextStyle(fontWeight: FontWeight.w600)),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(children: [
+                      Expanded(child: OutlinedButton.icon(
+                        onPressed: () => setState(() => _showRejectInput = true),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.red, side: const BorderSide(color: AppColors.red),
+                          padding: const EdgeInsets.symmetric(vertical: 13)),
+                        icon: const Icon(Icons.close_rounded, size: 16),
+                        label: const Text('Татгалзах', style: TextStyle(fontWeight: FontWeight.w600)))),
+                      const SizedBox(width: 12),
+                      Expanded(child: ElevatedButton.icon(
+                        onPressed: () { Navigator.pop(context); widget.onAccept(); },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.teal, foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 13)),
+                        icon: const Icon(Icons.check_rounded, size: 16),
+                        label: const Text('Зөвшөөрөх', style: TextStyle(fontWeight: FontWeight.w600)))),
+                    ]),
                   ])),
           ),
         ]),
@@ -1187,7 +1532,61 @@ class _ProfileTabContent extends StatelessWidget {
             Expanded(child: Text(message,
               style: const TextStyle(fontSize: 13, color: AppColors.text, height: 1.6))),
           ])),
+        const SizedBox(height: 14),
       ],
+
+      // ── GitHub ─────────────────────────────────────────────
+      if ((a['github_link'] as String?)?.isNotEmpty == true) ...[
+        _DL('GITHUB'),
+        Container(
+          margin: const EdgeInsets.only(bottom: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0D1117),
+            borderRadius: BorderRadius.circular(10)),
+          child: Row(children: [
+            const Icon(Icons.code_rounded, size: 16, color: Colors.white),
+            const SizedBox(width: 10),
+            Expanded(child: Text(
+              a['github_link'] as String,
+              style: const TextStyle(fontSize: 12, color: Colors.white70),
+              overflow: TextOverflow.ellipsis)),
+          ]),
+        ),
+      ],
+
+      // ── Portfolio ──────────────────────────────────────────
+      if ((a['portfolio'] as List?)?.isNotEmpty == true) ...[
+        _DL('БҮТЭЭЛҮҮД'),
+        ...(a['portfolio'] as List).cast<Map<String, dynamic>>().map((p) {
+          final pName = p['name'] as String? ?? '';
+          final pUrl  = p['url']  as String? ?? '';
+          return Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.bg,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.border, width: 0.5)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              if (pName.isNotEmpty)
+                Text(pName,
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.text)),
+              if (pUrl.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Row(children: [
+                  const Icon(Icons.link_rounded, size: 13, color: AppColors.primary),
+                  const SizedBox(width: 5),
+                  Expanded(child: Text(pUrl,
+                    style: const TextStyle(fontSize: 11, color: AppColors.primary),
+                    overflow: TextOverflow.ellipsis)),
+                ]),
+              ],
+            ]),
+          );
+        }),
+      ],
+
       const SizedBox(height: 20),
     ]);
   }
@@ -1363,21 +1762,26 @@ class _CVContent extends StatelessWidget {
     final summary  = cv['summary']      as String? ?? '';
     final skills   = (cv['skills']      as List?)?.cast<String>() ?? [];
     final exps     = (cv['experiences'] as List?) ?? [];
+    final grades   = (cv['grades']      as List?) ?? [];
     final langs    = (cv['languages']   as List?)?.cast<String>() ?? [];
     final certs    = (cv['certs']       as List?)?.cast<String>() ?? [];
     final univ     = cv['university']   as String? ?? '';
     final major    = cv['major']        as String? ?? '';
-    final year     = cv['year']         as String? ?? '';
+    final year     = cv['year']?.toString() ?? '';
     final gpa      = cv['gpa']          as String? ?? '';
     final email    = cv['email']        as String? ?? '';
     final phone    = cv['phone']        as String? ?? '';
+    final country  = cv['country']      as String? ?? '';
+    final dob      = cv['dob']          as String? ?? '';
 
     return ListView(padding: const EdgeInsets.all(16), children: [
-      if (email.isNotEmpty || phone.isNotEmpty) ...[
+      if (email.isNotEmpty || phone.isNotEmpty || country.isNotEmpty || dob.isNotEmpty) ...[
         _DL('ХОЛБОО БАРИХ'),
         _InfoBox(children: [
-          _DRow(Icons.email_outlined, 'Имэйл', email),
-          _DRow(Icons.phone_outlined, 'Утас',  phone),
+          if (email.isNotEmpty)   _DRow(Icons.email_outlined,          'Имэйл',    email),
+          if (phone.isNotEmpty)   _DRow(Icons.phone_outlined,          'Утас',     phone),
+          if (country.isNotEmpty) _DRow(Icons.location_on_outlined,    'Улс/Хот',  country),
+          if (dob.isNotEmpty)     _DRow(Icons.cake_outlined,           'Төрсөн',   dob.length >= 10 ? dob.substring(0, 10) : dob),
         ]),
       ],
 
@@ -1390,12 +1794,52 @@ class _CVContent extends StatelessWidget {
             Text(univ, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
             if (major.isNotEmpty) Text(major, style: const TextStyle(fontSize: 12, color: AppColors.muted)),
             const SizedBox(height: 6),
-            Row(children: [
+            Wrap(spacing: 6, children: [
               if (year.isNotEmpty) _MiniChip('$year-р курс', AppColors.primary),
-              if (year.isNotEmpty && gpa.isNotEmpty) const SizedBox(width: 6),
-              if (gpa.isNotEmpty) _MiniChip('GPA: $gpa', AppColors.teal),
+              if (gpa.isNotEmpty)  _MiniChip('GPA: $gpa',    AppColors.teal),
             ]),
           ])),
+        const SizedBox(height: 14),
+      ],
+
+      if (grades.isNotEmpty) ...[
+        const _DL('ХИЧЭЭЛИЙН ДҮН'),
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.bg,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.border, width: 0.5),
+          ),
+          child: Column(
+            children: grades.cast<Map>().asMap().entries.map((e) {
+              final g = e.value;
+              final isLast = e.key == grades.length - 1;
+              return Column(children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                  child: Row(children: [
+                    Expanded(child: Text(
+                      g['subject']?.toString() ?? '',
+                      style: const TextStyle(fontSize: 12, color: AppColors.text),
+                    )),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryLight,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        g['grade']?.toString() ?? '',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primaryDark),
+                      ),
+                    ),
+                  ]),
+                ),
+                if (!isLast) const Divider(height: 1, indent: 12, endIndent: 12),
+              ]);
+            }).toList(),
+          ),
+        ),
         const SizedBox(height: 14),
       ],
 
@@ -1517,4 +1961,216 @@ class _MiniChip extends StatelessWidget {
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
     decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(6)),
     child: Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color)));
+}
+
+// ── Edit Post Sheet ───────────────────────────────────────────
+class _EditPostSheet extends StatefulWidget {
+  final Map<String, dynamic> post;
+  final VoidCallback onDone;
+  const _EditPostSheet({required this.post, required this.onDone});
+  @override State<_EditPostSheet> createState() => _EditPostSheetState();
+}
+
+class _EditPostSheetState extends State<_EditPostSheet> {
+  late final TextEditingController _title, _desc, _loc, _dur, _salary, _skillCtrl;
+  late List<String> _skills;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final p = widget.post;
+    _title     = TextEditingController(text: p['title']       as String? ?? '');
+    _desc      = TextEditingController(text: p['description'] as String? ?? '');
+    _loc       = TextEditingController(text: p['location']    as String? ?? '');
+    _dur       = TextEditingController(text: (p['duration_days'] ?? 30).toString());
+    _salary    = TextEditingController(text: p['salary']      as String? ?? '');
+    _skillCtrl = TextEditingController();
+    _skills    = ((p['required_skills'] as List?)?.cast<String>() ?? []).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 24),
+      child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Center(child: Container(width: 44, height: 4,
+          decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)))),
+        const SizedBox(height: 20),
+        const Text('Зар засах', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 16),
+
+        _Label('Ажлын нэр'),
+        TextField(controller: _title, decoration: const InputDecoration(hintText: 'Frontend хөгжүүлэгч...')),
+        const SizedBox(height: 12),
+
+        _Label('Тайлбар'),
+        TextField(controller: _desc, maxLines: 3, decoration: const InputDecoration(hintText: 'Ажлын дэлгэрэнгүй...')),
+        const SizedBox(height: 12),
+
+        _Label('Байршил'),
+        TextField(controller: _loc, decoration: const InputDecoration(hintText: 'Улаанбаатар / Онлайн')),
+        const SizedBox(height: 12),
+
+        _Label('Хугацаа (хоног)'),
+        TextField(controller: _dur, keyboardType: TextInputType.number, decoration: const InputDecoration(hintText: '30')),
+        const SizedBox(height: 12),
+
+        _Label('Цалин (заавал биш)'),
+        TextField(controller: _salary, decoration: const InputDecoration(hintText: 'Сард 500,000₮')),
+        const SizedBox(height: 12),
+
+        _Label('Шаардлагатай мэдлэг'),
+        Row(children: [
+          Expanded(child: TextField(controller: _skillCtrl, decoration: const InputDecoration(hintText: 'React, Python...'))),
+          const SizedBox(width: 8),
+          IconButton(
+            onPressed: () {
+              if (_skillCtrl.text.trim().isNotEmpty) {
+                setState(() { _skills.add(_skillCtrl.text.trim()); _skillCtrl.clear(); });
+              }
+            },
+            icon: const Icon(Icons.add_circle, color: AppColors.primary),
+          ),
+        ]),
+        if (_skills.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Wrap(spacing: 6, runSpacing: 6,
+            children: _skills.map((s) => Chip(
+              label: Text(s, style: const TextStyle(fontSize: 12)),
+              onDeleted: () => setState(() => _skills.remove(s)),
+              deleteIconColor: AppColors.muted,
+              backgroundColor: AppColors.bg,
+            )).toList()),
+        ],
+        const SizedBox(height: 24),
+        Row(children: [
+          Expanded(child: OutlinedButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Болих'),
+          )),
+          const SizedBox(width: 12),
+          Expanded(child: ElevatedButton(
+            onPressed: _saving ? null : _save,
+            child: _saving
+                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                : const Text('Хадгалах'),
+          )),
+        ]),
+        const SizedBox(height: 8),
+      ])),
+    );
+  }
+
+  Future<void> _save() async {
+    if (_title.text.trim().isEmpty) return;
+    setState(() => _saving = true);
+    try {
+      await InternshipService().updatePost(widget.post['id'] as String, {
+        'title':          _title.text.trim(),
+        'description':    _desc.text.trim(),
+        'location':       _loc.text.trim(),
+        'durationDays':   int.tryParse(_dur.text) ?? 30,
+        'salary':         _salary.text.trim().isEmpty ? null : _salary.text.trim(),
+        'requiredSkills': _skills,
+      });
+      if (mounted) {
+        Navigator.pop(context);
+        widget.onDone();
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Зар шинэчлэгдлээ ✓'),
+          backgroundColor: AppColors.teal, behavior: SnackBarBehavior.floating));
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(e.message), backgroundColor: AppColors.red, behavior: SnackBarBehavior.floating));
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final c in [_title, _desc, _loc, _dur, _salary, _skillCtrl]) { c.dispose(); }
+    super.dispose();
+  }
+}
+
+class _Label extends StatelessWidget {
+  final String text;
+  const _Label(this.text);
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 6),
+    child: Text(text, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.text)),
+  );
+}
+
+// ── Assessment Answers Tab ─────────────────────────────────────
+class _AssessmentAnswersTab extends StatelessWidget {
+  final Future<Map<String, dynamic>?> assessmentFuture;
+  const _AssessmentAnswersTab({required this.assessmentFuture});
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<Map<String, dynamic>?>(
+    future: assessmentFuture,
+    builder: (_, snap) {
+      if (snap.connectionState == ConnectionState.waiting) {
+        return const Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary));
+      }
+      final answers = (snap.data?['answers'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      if (answers.isEmpty) {
+        return const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.quiz_outlined, size: 48, color: AppColors.faint),
+          SizedBox(height: 12),
+          Text('Шалгалт өгөөгүй байна', style: TextStyle(color: AppColors.muted)),
+          SizedBox(height: 4),
+          Text('Оюутан шалгалтын асуултанд хариулаагүй байна',
+            style: TextStyle(fontSize: 11, color: AppColors.faint), textAlign: TextAlign.center),
+        ]));
+      }
+      return ListView(padding: const EdgeInsets.all(16), children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(color: AppColors.amberLight, borderRadius: BorderRadius.circular(10)),
+          child: const Row(children: [
+            Icon(Icons.info_outline_rounded, size: 16, color: AppColors.amber),
+            SizedBox(width: 8),
+            Expanded(child: Text(
+              'Оюутанд хариултын дүн харагдахгүй. Зөвхөн та үзэх боломжтой.',
+              style: TextStyle(fontSize: 11, color: AppColors.amber))),
+          ]),
+        ),
+        const SizedBox(height: 14),
+        ...answers.asMap().entries.map((e) => Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppColors.bg, borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border, width: 0.5)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Container(
+                width: 22, height: 22,
+                decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                child: Center(child: Text('${e.key + 1}',
+                  style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w700)))),
+              const SizedBox(width: 8),
+              Expanded(child: Text(e.value['question'] as String? ?? '',
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.text))),
+            ]),
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
+              child: Text(e.value['answer'] as String? ?? '',
+                style: const TextStyle(fontSize: 13, color: AppColors.text, height: 1.5)),
+            ),
+          ]),
+        )),
+      ]);
+    },
+  );
 }

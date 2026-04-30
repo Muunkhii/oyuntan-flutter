@@ -361,8 +361,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         const SizedBox(height: 10),
         Text(
           _mn
-            ? 'Нэвтрэхэд асуудал гарвал support@oyuntan.mn руу имэйл илгээх эсвэл +976 9900-0000 дугаарт залгана уу.'
-            : 'If you have trouble signing in, email support@oyuntan.mn or call +976 9900-0000.',
+            ? 'Нэвтрэхэд асуудал гарвал Munkhbat.m@hitechsolution.mn руу имэйл илгээх эсвэл +976 88330925 дугаарт залгана уу.'
+            : 'If you have trouble signing in, email munkhbat.m@hitechsolution.mn or call +976 88330925.',
           style: const TextStyle(fontSize: 13, color: AppColors.muted, height: 1.6),
           textAlign: TextAlign.center,
         ),

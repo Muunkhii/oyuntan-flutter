@@ -12,6 +12,8 @@ import '../../providers/auth_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../services/api_service.dart';
 
+// ignore_for_file: use_build_context_synchronously
+
 // ── REVIEW SCREEN ─────────────────────────────────────────────
 class ReviewScreen extends StatefulWidget {
   final String internshipId;
@@ -169,35 +171,82 @@ class ProfileScreen extends StatelessWidget {
       body: SingleChildScrollView(
         child: Column(children: [
           // ── Header ──────────────────────────────────────────
-          Container(
-            width: double.infinity, color: Colors.white,
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
-            child: Column(children: [
-              _AvatarPicker(name: name, colorIndex: auth.isCompany ? 2 : 0, uid: auth.uid)
-                .animate().scale(begin: const Offset(0.7, 0.7), duration: 500.ms, curve: Curves.elasticOut),
-              const SizedBox(height: 14),
-              Text(name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.text)),
-              const SizedBox(height: 3),
-              if (email.isNotEmpty) Text(email, style: const TextStyle(fontSize: 12, color: AppColors.muted)),
-              if (sub.isNotEmpty) ...[
-                const SizedBox(height: 2),
-                Text(sub, style: const TextStyle(fontSize: 11, color: AppColors.faint)),
-              ],
-              const SizedBox(height: 18),
-              SizedBox(width: 160, child: ElevatedButton(
-                onPressed: () => _showEditProfile(context, auth),
-                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white, elevation: 0, minimumSize: const Size(0, 42), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                child: Text(mn ? 'Профайл засах' : 'Edit Profile', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-              )),
-            ]),
-          ).animate().fadeIn(duration: 400.ms),
+          if (auth.isCompany)
+            Container(
+              color: Colors.white,
+              child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
+                Stack(
+                  clipBehavior: Clip.none,
+                  alignment: Alignment.bottomCenter,
+                  children: [
+                    _CoverPhotoPicker(uid: auth.uid),
+                    Positioned(
+                      bottom: -44,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 4),
+                          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 12)]),
+                        child: _AvatarPicker(name: name, colorIndex: 2, uid: auth.uid, isCompany: true)
+                          .animate().scale(begin: const Offset(0.7, 0.7), duration: 500.ms, curve: Curves.elasticOut),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 52),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+                  child: Column(children: [
+                    Text(name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.text)),
+                    const SizedBox(height: 3),
+                    if (email.isNotEmpty) Text(email, style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+                    if (sub.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(sub, style: const TextStyle(fontSize: 11, color: AppColors.faint)),
+                    ],
+                    const SizedBox(height: 18),
+                    SizedBox(width: 200, child: ElevatedButton.icon(
+                      onPressed: () => _showEditProfile(context, auth),
+                      icon: const Icon(Icons.edit_outlined, size: 16),
+                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white, elevation: 0, minimumSize: const Size(0, 42), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                      label: Text(mn ? 'Профайл засах' : 'Edit Profile', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    )),
+                  ]),
+                ),
+              ]),
+            ).animate().fadeIn(duration: 400.ms)
+          else
+            Container(
+              width: double.infinity, color: Colors.white,
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
+              child: Column(children: [
+                _AvatarPicker(name: name, colorIndex: 0, uid: auth.uid, isCompany: false)
+                  .animate().scale(begin: const Offset(0.7, 0.7), duration: 500.ms, curve: Curves.elasticOut),
+                const SizedBox(height: 14),
+                Text(name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.text)),
+                const SizedBox(height: 3),
+                if (email.isNotEmpty) Text(email, style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+                if (sub.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(sub, style: const TextStyle(fontSize: 11, color: AppColors.faint)),
+                ],
+                const SizedBox(height: 18),
+                SizedBox(width: 200, child: ElevatedButton.icon(
+                  onPressed: () => context.push('/cv'),
+                  icon: const Icon(Icons.edit_outlined, size: 16),
+                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white, elevation: 0, minimumSize: const Size(0, 42), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                  label: Text(mn ? 'Профайл засах' : 'Edit Profile', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                )),
+              ]),
+            ).animate().fadeIn(duration: 400.ms),
 
           const SizedBox(height: 10),
 
           _MenuSection(items: [
-            if (auth.isStudent) _MenuItem(icon: Icons.article_outlined, iconColor: AppColors.primary, iconBg: AppColors.primaryLight, label: 'CV Maker', onTap: () => context.push('/cv')),
-            _MenuItem(icon: Icons.work_history_outlined, iconColor: AppColors.green, iconBg: AppColors.greenLight, label: mn ? 'Дадлагийн түүх' : 'Internship History', onTap: () => context.push('/internships')),
+            if (auth.isStudent) _MenuItem(icon: Icons.person_pin_outlined, iconColor: AppColors.primary, iconBg: AppColors.primaryLight, label: mn ? 'Дэлгэрэнгүй профайл / CV' : 'Full Profile / CV', onTap: () => context.push('/cv')),
+            _MenuItem(icon: Icons.work_history_outlined, iconColor: AppColors.green, iconBg: AppColors.greenLight, label: mn ? 'Дадлагийн түүх' : 'Internship History', onTap: () => context.push(auth.isCompany ? '/company/interns' : '/internships')),
             if (auth.isStudent) _MenuItem(icon: Icons.calendar_month_outlined, iconColor: AppColors.amber, iconBg: AppColors.amberLight, label: mn ? 'Хичээл хуваарь' : 'Class Schedule', onTap: () => context.push('/schedule')),
+            if (auth.isCompany) _MenuItem(icon: Icons.quiz_outlined, iconColor: AppColors.amber, iconBg: AppColors.amberLight, label: mn ? 'Мэргэжлийн шалгалт' : 'Professional Assessment', onTap: () => _showAssessmentEditor(context, auth)),
           ]).animate().fadeIn(delay: 100.ms),
 
           const SizedBox(height: 10),
@@ -319,6 +368,15 @@ class ProfileScreen extends StatelessWidget {
       const SizedBox(height: 24),
     ])));
 
+  void _showAssessmentEditor(BuildContext ctx, AuthProvider auth) {
+    showModalBottomSheet(
+      context: ctx,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) => _AssessmentEditorSheet(companyId: auth.uid),
+    );
+  }
+
   void _confirmLogout(BuildContext ctx, AuthProvider auth, bool mn) => showModalBottomSheet(context: ctx,
     shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
     builder: (_) => Padding(padding: const EdgeInsets.fromLTRB(24, 24, 24, 32), child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -428,17 +486,22 @@ class _EditProfileSheet extends StatefulWidget {
   @override State<_EditProfileSheet> createState() => _EditProfileSheetState();
 }
 class _EditProfileSheetState extends State<_EditProfileSheet> {
-  late final TextEditingController _name, _phone, _desc, _location, _website;
+  late final TextEditingController _name, _phone, _desc, _location, _website, _employeeCount, _history, _foundedYear;
   bool _saving = false;
 
   @override void initState() {
     super.initState();
     final p = widget.auth.profile ?? {};
-    _name     = TextEditingController(text: widget.auth.displayName);
-    _phone    = TextEditingController(text: p['phone']       as String? ?? '');
-    _desc     = TextEditingController(text: p['description'] as String? ?? '');
-    _location = TextEditingController(text: p['location']    as String? ?? '');
-    _website  = TextEditingController(text: p['website']     as String? ?? '');
+    _name          = TextEditingController(text: widget.auth.displayName);
+    _phone         = TextEditingController(text: p['phone']          as String? ?? '');
+    _desc          = TextEditingController(text: p['description']    as String? ?? '');
+    _location      = TextEditingController(text: p['location']       as String? ?? '');
+    _website       = TextEditingController(text: p['website']        as String? ?? '');
+    final ec = p['employee_count'];
+    _employeeCount = TextEditingController(text: ec != null && ec != 0 ? ec.toString() : '');
+    _history       = TextEditingController(text: p['history']        as String? ?? '');
+    final fy = p['founded_year'];
+    _foundedYear   = TextEditingController(text: fy != null && fy != 0 ? fy.toString() : '');
   }
 
   @override Widget build(BuildContext ctx) {
@@ -472,6 +535,24 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
           const FieldLabel('Вэбсайт'),
           TextField(controller: _website, keyboardType: TextInputType.url,
             decoration: const InputDecoration(prefixIcon: Icon(Icons.language_outlined, size: 18, color: AppColors.faint), hintText: 'https://...')),
+
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const FieldLabel('Ажилчдын тоо'),
+              TextField(controller: _employeeCount, keyboardType: TextInputType.number,
+                decoration: const InputDecoration(prefixIcon: Icon(Icons.people_outline_rounded, size: 18, color: AppColors.faint), hintText: '150')),
+            ])),
+            const SizedBox(width: 12),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const FieldLabel('Үүсгэн байгуулагдсан он'),
+              TextField(controller: _foundedYear, keyboardType: TextInputType.number,
+                decoration: const InputDecoration(prefixIcon: Icon(Icons.calendar_today_outlined, size: 18, color: AppColors.faint), hintText: '2015')),
+            ])),
+          ]),
+
+          const FieldLabel('Компанийн намтар'),
+          TextField(controller: _history, maxLines: 4,
+            decoration: const InputDecoration(hintText: 'Компани хэзээ, хэрхэн үүсгэгдсэн, үйл ажиллагааны чиглэл...')),
         ],
 
         const SizedBox(height: 24),
@@ -495,6 +576,12 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
           'description': _desc.text.trim(),
           'location':    _location.text.trim(),
           'website':     _website.text.trim(),
+          if (_employeeCount.text.trim().isNotEmpty)
+            'employeeCount': int.tryParse(_employeeCount.text.trim()) ?? 0,
+          if (_history.text.trim().isNotEmpty)
+            'history': _history.text.trim(),
+          if (_foundedYear.text.trim().isNotEmpty)
+            'foundedYear': int.tryParse(_foundedYear.text.trim()) ?? 0,
         };
       }
       await ApiClient.put(auth.isStudent ? '/students/$uid' : '/companies/$uid', data);
@@ -512,7 +599,7 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
   }
 
   @override void dispose() {
-    for (final c in [_name, _phone, _desc, _location, _website]) { c.dispose(); }
+    for (final c in [_name, _phone, _desc, _location, _website, _employeeCount, _history, _foundedYear]) { c.dispose(); }
     super.dispose();
   }
 }
@@ -606,7 +693,8 @@ class _AvatarPicker extends StatefulWidget {
   final String name;
   final int colorIndex;
   final String uid;
-  const _AvatarPicker({required this.name, required this.colorIndex, required this.uid});
+  final bool isCompany;
+  const _AvatarPicker({required this.name, required this.colorIndex, required this.uid, required this.isCompany});
   @override State<_AvatarPicker> createState() => _AvatarPickerState();
 }
 
@@ -625,7 +713,21 @@ class _AvatarPickerState extends State<_AvatarPicker> {
     final b64 = prefs.getString(_prefKey);
     if (b64 != null && mounted) {
       setState(() => _bytes = base64Decode(b64));
+      return;
     }
+    // Try fetching from server if not cached locally
+    try {
+      final endpoint = widget.isCompany
+          ? '/companies/${widget.uid}'
+          : '/students/${widget.uid}';
+      final data = await ApiClient.get(endpoint) as Map<String, dynamic>?;
+      final photo = data?['photo'] as String?;
+      if (photo != null && photo.isNotEmpty && mounted) {
+        final decoded = base64Decode(photo);
+        await prefs.setString(_prefKey, photo);
+        setState(() => _bytes = decoded);
+      }
+    } catch (_) {}
   }
 
   Future<void> _pick() async {
@@ -636,9 +738,15 @@ class _AvatarPickerState extends State<_AvatarPicker> {
     );
     if (xFile == null) return;
     final bytes = await xFile.readAsBytes();
+    final b64   = base64Encode(bytes);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_prefKey, base64Encode(bytes));
+    await prefs.setString(_prefKey, b64);
     if (mounted) setState(() => _bytes = bytes);
+    // Sync photo to server so other users can see it
+    final endpoint = widget.isCompany
+        ? '/companies/${widget.uid}'
+        : '/students/${widget.uid}';
+    try { await ApiClient.put(endpoint, {'photo': b64}); } catch (_) {}
   }
 
   @override
@@ -660,4 +768,307 @@ class _AvatarPickerState extends State<_AvatarPicker> {
       ),
     ]),
   );
+}
+
+// ── Cover Photo Picker ────────────────────────────────────────
+class _CoverPhotoPicker extends StatefulWidget {
+  final String uid;
+  const _CoverPhotoPicker({required this.uid});
+  @override State<_CoverPhotoPicker> createState() => _CoverPhotoPickerState();
+}
+
+class _CoverPhotoPickerState extends State<_CoverPhotoPicker> {
+  Uint8List? _bytes;
+  String get _prefKey => 'cover_b64_${widget.uid}';
+
+  @override void initState() { super.initState(); _load(); }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final b64 = prefs.getString(_prefKey);
+    if (b64 != null && mounted) {
+      setState(() => _bytes = base64Decode(b64));
+      return;
+    }
+    try {
+      final data = await ApiClient.get('/companies/${widget.uid}') as Map<String, dynamic>?;
+      final cover = data?['cover_photo'] as String?;
+      if (cover != null && cover.isNotEmpty && mounted) {
+        await prefs.setString(_prefKey, cover);
+        setState(() => _bytes = base64Decode(cover));
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _pick() async {
+    final xFile = await ImagePicker().pickImage(
+      source: ImageSource.gallery, imageQuality: 75, maxWidth: 1200);
+    if (xFile == null) return;
+    final bytes = await xFile.readAsBytes();
+    final b64 = base64Encode(bytes);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_prefKey, b64);
+    if (mounted) setState(() => _bytes = bytes);
+    try { await ApiClient.put('/companies/${widget.uid}', {'coverPhoto': b64}); } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: _pick,
+    child: Stack(children: [
+      Container(
+        width: double.infinity, height: 140,
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F172A),
+          gradient: _bytes == null
+              ? const LinearGradient(
+                  colors: [Color(0xFF0F172A), Color(0xFF1E3A8A)],
+                  begin: Alignment.topLeft, end: Alignment.bottomRight)
+              : null,
+          image: _bytes != null
+              ? DecorationImage(image: MemoryImage(_bytes!), fit: BoxFit.cover)
+              : null,
+        ),
+      ),
+      Positioned(
+        right: 12, bottom: 10,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(20)),
+          child: const Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.camera_alt_outlined, size: 13, color: Colors.white),
+            SizedBox(width: 5),
+            Text('Арын зураг', style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w500)),
+          ]),
+        ),
+      ),
+    ]),
+  );
+}
+
+// ── Assessment Editor Sheet ───────────────────────────────────
+class _AssessmentEditorSheet extends StatefulWidget {
+  final String companyId;
+  const _AssessmentEditorSheet({required this.companyId});
+  @override State<_AssessmentEditorSheet> createState() => _AssessmentEditorSheetState();
+}
+
+class _AssessmentEditorSheetState extends State<_AssessmentEditorSheet> {
+  final List<TextEditingController> _controllers = [];
+  bool _loading = true, _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadQuestions();
+  }
+
+  Future<void> _loadQuestions() async {
+    final qs = await AssessmentService().getCompanyQuestions(widget.companyId);
+    if (!mounted) return;
+    setState(() {
+      for (final q in qs) {
+        _controllers.add(TextEditingController(text: q['question'] as String? ?? ''));
+      }
+      if (_controllers.isEmpty) _controllers.add(TextEditingController());
+      _loading = false;
+    });
+  }
+
+  void _addQuestion() {
+    if (_controllers.length >= 10) return;
+    setState(() => _controllers.add(TextEditingController()));
+  }
+
+  void _removeQuestion(int i) {
+    if (_controllers.length <= 1) return;
+    _controllers[i].dispose();
+    setState(() => _controllers.removeAt(i));
+  }
+
+  Future<void> _save() async {
+    final questions = _controllers
+        .map((c) => c.text.trim())
+        .where((t) => t.isNotEmpty)
+        .map((t) => <String, dynamic>{'question': t, 'type': 'text'})
+        .toList();
+    setState(() => _saving = true);
+    try {
+      await AssessmentService().saveCompanyQuestions(widget.companyId, questions);
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Шалгалт хадгалагдлаа ✓'),
+          backgroundColor: AppColors.teal, behavior: SnackBarBehavior.floating));
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(e is ApiException ? e.message : 'Алдаа гарлаа'),
+          backgroundColor: AppColors.red, behavior: SnackBarBehavior.floating));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final kb = MediaQuery.of(context).viewInsets.bottom;
+    return SizedBox(
+      height: MediaQuery.of(context).size.height * 0.88,
+      child: Column(children: [
+        // ── Handle ──────────────────────────────────────────
+        const SizedBox(height: 12),
+        Center(child: Container(width: 44, height: 4,
+          decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)))),
+        // ── Header ──────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+          child: Row(children: [
+            Container(width: 40, height: 40,
+              decoration: BoxDecoration(color: AppColors.amberLight, borderRadius: BorderRadius.circular(12)),
+              child: const Icon(Icons.quiz_outlined, color: AppColors.amber, size: 22)),
+            const SizedBox(width: 12),
+            const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Мэргэжлийн шалгалт',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+              Text('Оюутнуудад асуух асуултуудаа бэлдэнэ үү (max 10)',
+                style: TextStyle(fontSize: 11, color: AppColors.muted)),
+            ])),
+          ]),
+        ),
+        const Divider(height: 24),
+        // ── List ────────────────────────────────────────────
+        Expanded(
+          child: _loading
+              ? const Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2))
+              : ListView(
+                  padding: EdgeInsets.fromLTRB(20, 0, 20, kb + 16),
+                  children: [
+                    ..._controllers.asMap().entries.map((e) {
+                      final i = e.key;
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppColors.bg,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.border, width: 0.5)),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Row(children: [
+                            Container(
+                              width: 24, height: 24,
+                              decoration: const BoxDecoration(
+                                color: AppColors.primary, shape: BoxShape.circle),
+                              child: Center(child: Text('${i + 1}',
+                                style: const TextStyle(
+                                  fontSize: 11, color: Colors.white,
+                                  fontWeight: FontWeight.w700)))),
+                            const SizedBox(width: 8),
+                            const Expanded(child: Text('Асуулт',
+                              style: TextStyle(
+                                fontSize: 12, fontWeight: FontWeight.w600,
+                                color: AppColors.muted))),
+                            GestureDetector(
+                              onTap: () => _removeQuestion(i),
+                              child: const Icon(Icons.close_rounded,
+                                size: 18, color: AppColors.muted)),
+                          ]),
+                          const SizedBox(height: 10),
+                          TextFormField(
+                            controller: e.value,
+                            maxLines: null,
+                            minLines: 2,
+                            keyboardType: TextInputType.multiline,
+                            textInputAction: TextInputAction.newline,
+                            decoration: InputDecoration(
+                              hintText: 'Асуултаа энд бичнэ үү...',
+                              filled: true,
+                              fillColor: Colors.white,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: const BorderSide(
+                                  color: AppColors.border, width: 0.5)),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: const BorderSide(
+                                  color: AppColors.border, width: 0.5)),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: const BorderSide(
+                                  color: AppColors.primary, width: 1.5)),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 12),
+                            ),
+                          ),
+                        ]),
+                      );
+                    }),
+                    const SizedBox(height: 4),
+                    if (_controllers.length < 10)
+                      GestureDetector(
+                        onTap: _addQuestion,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: AppColors.primary.withValues(alpha: 0.4),
+                              width: 1.5),
+                            borderRadius: BorderRadius.circular(12)),
+                          child: const Row(mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.add_rounded, color: AppColors.primary, size: 18),
+                              SizedBox(width: 6),
+                              Text('Асуулт нэмэх',
+                                style: TextStyle(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13)),
+                            ]),
+                        ),
+                      ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.amberLight,
+                        borderRadius: BorderRadius.circular(10)),
+                      child: const Row(children: [
+                        Icon(Icons.info_outline_rounded, size: 16, color: AppColors.amber),
+                        SizedBox(width: 8),
+                        Expanded(child: Text(
+                          'Оюутнуудад дүн харагдахгүй. Зөвхөн та үзэх боломжтой.',
+                          style: TextStyle(fontSize: 11, color: AppColors.amber))),
+                      ]),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                ),
+        ),
+        // ── Buttons ─────────────────────────────────────────
+        Padding(
+          padding: EdgeInsets.fromLTRB(20, 8, 20, MediaQuery.of(context).padding.bottom + 16),
+          child: Row(children: [
+            Expanded(child: OutlinedButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Болих'))),
+            const SizedBox(width: 12),
+            Expanded(child: ElevatedButton(
+              onPressed: _saving ? null : _save,
+              child: _saving
+                  ? const SizedBox(width: 18, height: 18,
+                      child: CircularProgressIndicator(
+                        color: Colors.white, strokeWidth: 2))
+                  : const Text('Хадгалах'))),
+          ]),
+        ),
+      ]),
+    );
+  }
+
+  @override
+  void dispose() {
+    for (final c in _controllers) { c.dispose(); }
+    super.dispose();
+  }
 }
