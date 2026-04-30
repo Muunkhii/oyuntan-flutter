@@ -16,6 +16,12 @@ app.use(express.json({ limit: '20mb' }));
 // ── Startup migration ─────────────────────────────────────────
 (async () => {
   const cols = [
+    `ALTER TABLE students ADD COLUMN IF NOT EXISTS photo TEXT`,
+    `ALTER TABLE students ADD COLUMN IF NOT EXISTS phone TEXT`,
+    `ALTER TABLE students ADD COLUMN IF NOT EXISTS bio TEXT`,
+    `ALTER TABLE students ADD COLUMN IF NOT EXISTS birth_date DATE`,
+    `ALTER TABLE students ADD COLUMN IF NOT EXISTS country TEXT`,
+    `ALTER TABLE students ADD COLUMN IF NOT EXISTS psych_profile JSONB`,
     `ALTER TABLE companies ADD COLUMN IF NOT EXISTS phone TEXT`,
     `ALTER TABLE companies ADD COLUMN IF NOT EXISTS employee_count INTEGER`,
     `ALTER TABLE companies ADD COLUMN IF NOT EXISTS founded_year INTEGER`,
@@ -50,6 +56,20 @@ app.use(express.json({ limit: '20mb' }));
        created_at TIMESTAMPTZ DEFAULT NOW()
      )`,
     `ALTER TABLE internship_posts ADD COLUMN IF NOT EXISTS view_count INTEGER DEFAULT 0`,
+    `CREATE TABLE IF NOT EXISTS student_reviews (
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+       internship_id UUID NOT NULL,
+       company_id UUID NOT NULL,
+       student_id UUID NOT NULL,
+       work_score INTEGER NOT NULL DEFAULT 0,
+       attitude_score INTEGER NOT NULL DEFAULT 0,
+       punctuality_score INTEGER NOT NULL DEFAULT 0,
+       learning_score INTEGER NOT NULL DEFAULT 0,
+       avg_score NUMERIC(3,1) NOT NULL DEFAULT 0,
+       would_rehire BOOLEAN DEFAULT NULL,
+       comment TEXT,
+       created_at TIMESTAMPTZ DEFAULT NOW()
+     )`,
   ];
   for (const sql of cols) {
     await pool.query(sql).catch(e => console.warn('Migration:', e.message));
@@ -78,7 +98,8 @@ function makeToken(uid, type) {
 
 // POST /auth/register/student
 app.post('/auth/register/student', async (req, res) => {
-  const { email, password, firstName, lastName, university, major, year, skills } = req.body;
+  const { email, password, firstName, lastName, university, major,
+          year, skills, phone, birthDate, country } = req.body;
   try {
     const hash = await bcrypt.hash(password, 10);
     const { rows: [user] } = await pool.query(
@@ -86,9 +107,14 @@ app.post('/auth/register/student', async (req, res) => {
       [email, hash]
     );
     await pool.query(
-      `INSERT INTO students (uid, first_name, last_name, university, major, year, skills)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [user.uid, firstName, lastName, university, major, year || null, skills || []]
+      `INSERT INTO students
+         (uid, first_name, last_name, university, major, year, skills, phone, birth_date, country)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+      [user.uid, firstName, lastName, university, major,
+       year || null, skills || [],
+       phone || null,
+       birthDate ? birthDate.substring(0, 10) : null,
+       country || null]
     );
     const token = makeToken(user.uid, 'student');
     res.json({ token, uid: user.uid, type: 'student' });
@@ -175,13 +201,25 @@ app.get('/students/:uid', auth, async (req, res) => {
 });
 
 app.put('/students/:uid', auth, async (req, res) => {
-  const { firstName, lastName, university, major, year, skills, bio, avatarUrl, phone, psychProfile } = req.body;
+  const { firstName, lastName, university, major, year, skills, bio, photo, phone, psychProfile } = req.body;
   try {
     await pool.query(
-      `UPDATE students SET first_name=$1, last_name=$2, university=$3, major=$4,
-       year=$5, skills=$6, bio=$7, avatar_url=$8, phone=$9, psych_profile=$10 WHERE uid=$11`,
-      [firstName, lastName, university, major, year, skills || [], bio, avatarUrl,
-       phone || null, psychProfile ? JSON.stringify(psychProfile) : null, req.params.uid]
+      `UPDATE students SET
+        first_name   = COALESCE($1,  first_name),
+        last_name    = COALESCE($2,  last_name),
+        university   = COALESCE($3,  university),
+        major        = COALESCE($4,  major),
+        year         = COALESCE($5,  year),
+        skills       = COALESCE($6,  skills),
+        bio          = COALESCE($7,  bio),
+        photo        = COALESCE($8,  photo),
+        phone        = COALESCE($9,  phone),
+        psych_profile= COALESCE($10, psych_profile)
+       WHERE uid = $11`,
+      [firstName ?? null, lastName ?? null, university ?? null, major ?? null,
+       year ?? null, skills ?? null, bio ?? null, photo ?? null,
+       phone ?? null, psychProfile ? JSON.stringify(psychProfile) : null,
+       req.params.uid]
     );
     res.json({ message: 'Шинэчлэгдлээ' });
   } catch (e) { res.status(500).json({ message: e.message }); }
@@ -281,6 +319,23 @@ app.get('/posts/:id', auth, async (req, res) => {
     );
     if (!rows.length) return res.status(404).json({ message: 'Олдсонгүй' });
     res.json(rows[0]);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// DELETE /posts/:id  – soft-delete if active internships exist, hard-delete otherwise
+app.delete('/posts/:id', auth, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { rows: active } = await pool.query(
+      `SELECT COUNT(*) as cnt FROM internships WHERE post_id = $1 AND status = 'active'`,
+      [id]
+    );
+    if (parseInt(active[0].cnt) > 0) {
+      await pool.query(`UPDATE internship_posts SET is_active = FALSE WHERE id = $1`, [id]);
+    } else {
+      await pool.query(`DELETE FROM internship_posts WHERE id = $1`, [id]);
+    }
+    res.json({ message: 'Устгагдлаа' });
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 

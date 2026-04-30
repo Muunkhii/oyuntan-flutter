@@ -4,8 +4,6 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../theme/app_theme.dart';
 import '../../providers/auth_provider.dart';
-import '../../services/api_service.dart';
-
 class RegisterStudentScreen extends StatefulWidget {
   const RegisterStudentScreen({super.key});
   @override State<RegisterStudentScreen> createState() => _State();
@@ -25,14 +23,6 @@ class _State extends State<RegisterStudentScreen> {
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Container(padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.primaryMid, width: 0.5)),
-            child: const Row(children: [
-              Icon(Icons.info_outline, size: 16, color: AppColors.primary),
-              SizedBox(width: 8),
-              Expanded(child: Text('Бүртгэлийн дараа 10 сэтгэлзүйн асуулт өгнө', style: TextStyle(fontSize: 12, color: AppColors.primaryDark))),
-            ])),
-          const SizedBox(height: 20),
-
           if (auth.error != null) ...[
             Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: AppColors.redLight, borderRadius: BorderRadius.circular(10)),
               child: Text(auth.error!, style: const TextStyle(fontSize: 12, color: AppColors.red))),
@@ -166,98 +156,3 @@ class _CState extends State<RegisterCompanyScreen> {
   @override void dispose() { for(final c in [_name,_desc,_phone,_em,_pw,_industry]) { c.dispose(); } super.dispose(); }
 }
 
-// ── PSYCH TEST ────────────────────────────────────────────────
-class PsychTestScreen extends StatefulWidget {
-  const PsychTestScreen({super.key});
-  @override State<PsychTestScreen> createState() => _PState();
-}
-class _PState extends State<PsychTestScreen> {
-  int _current = 0;
-  final _answers = <int, String>{};
-
-  static const _questions = [
-    ('Би шинэ зүйл суралцахад хэр хурдан?',       ['Маш хурдан', 'Дундаж', 'Удаан хугацаа шаарддаг']),
-    ('Багаар ажиллахад надад хэр тохиромжтой?',   ['Маш тохиромжтой', 'Дундаж', 'Ганцаараа ажиллах нь дээр']),
-    ('Дарамтан дор ажиллахдаа хэрхэн хандах вэ?', ['Идэвхжидэг', 'Тайван байдаг', 'Стресс нөлөөлдөг']),
-    ('Шүүмжлэлийг хэрхэн хүлээн авдаг вэ?',      ['Сайхан хүлээн авдаг', 'Тогтвортой', 'Хэцүүхэн байдаг']),
-    ('Шинэ орчинд дасан зохицох чадвар?',         ['Маш сайн', 'Дундаж', 'Цаг шаарддаг']),
-    ('Санаачлагатай байдал?',                      ['Үргэлж санаачлагатай', 'Нөхцлөөс хамаарна', 'Удирдамж хэрэгтэй']),
-    ('Харилцаа холбооны чадвар?',                  ['Маш сайн', 'Дундаж', 'Хөгжүүлж байна']),
-    ('Цаг хугацаа зохицуулах чадвар?',            ['Маш сайн', 'Дундаж', 'Хүндрэлтэй']),
-    ('Асуудал шийдвэрлэх хандлага?',              ['Бие даан шийдэг', 'Тусламж хүсдэг', 'Хамтран шийдэг']),
-    ('Ирээдүйн зорилго?',                         ['Мэргэжлийн карьер', 'Өөрийн бизнес', 'Тодорхойгүй байна']),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    final pct = (_current / _questions.length);
-    final q = _questions[_current];
-    return Scaffold(
-      backgroundColor: AppColors.white,
-      body: SafeArea(
-        child: Column(children: [
-          Container(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-            decoration: const BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.only(bottomLeft: Radius.circular(24), bottomRight: Radius.circular(24))),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                const Text('Сэтгэлзүйн тест', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: AppColors.white)),
-                const Spacer(),
-                Text('${_current+1} / ${_questions.length}', style: const TextStyle(fontSize: 12, color: Color(0xAAFFFFFF))),
-              ]),
-              const SizedBox(height: 12),
-              ClipRRect(borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(value: pct, minHeight: 6, backgroundColor: const Color(0x33FFFFFF), valueColor: const AlwaysStoppedAnimation(AppColors.white))),
-            ]),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const SizedBox(height: 16),
-                Text(q.$1, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, height: 1.4)),
-                const SizedBox(height: 28),
-                ...q.$2.map((opt) => GestureDetector(
-                  onTap: () => setState(() => _answers[_current] = opt),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    width: double.infinity,
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: _answers[_current]==opt ? AppColors.primaryLight : AppColors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: _answers[_current]==opt ? AppColors.primary : AppColors.border, width: _answers[_current]==opt ? 1.5 : 0.5),
-                    ),
-                    child: Text(opt, style: TextStyle(fontSize: 14, fontWeight: _answers[_current]==opt ? FontWeight.w600 : FontWeight.w400, color: _answers[_current]==opt ? AppColors.primaryDark : AppColors.text)),
-                  ),
-                )),
-                const Spacer(),
-                PrimaryButton(
-                  label: _current == _questions.length-1 ? 'Дуусгах' : 'Дараагийн →',
-                  onTap: _answers.containsKey(_current) ? _next : null,
-                  bg: _answers.containsKey(_current) ? AppColors.primary : AppColors.faint,
-                ),
-              ]),
-            ),
-          ),
-        ]),
-      ),
-    );
-  }
-
-  void _next() {
-    if (_current < _questions.length - 1) {
-      setState(() => _current++);
-    } else {
-      _finish();
-    }
-  }
-
-  Future<void> _finish() async {
-    final uid = context.read<AuthProvider>().uid;
-    final profile = Map.fromEntries(_answers.entries.map((e) => MapEntry('q${e.key+1}', e.value)));
-    await ApiClient.put('/students/$uid', {'psychProfile': profile});
-    if (mounted) context.go('/home');
-  }
-}

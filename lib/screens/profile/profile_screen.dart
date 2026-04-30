@@ -135,8 +135,19 @@ class _RState extends State<ReviewScreen> {
 // ─────────────────────────────────────────────────────────────
 //  PROFILE SCREEN
 // ─────────────────────────────────────────────────────────────
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+  @override State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<AuthProvider>().refreshProfile();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -144,7 +155,12 @@ class ProfileScreen extends StatelessWidget {
     final locale = context.watch<LocaleProvider>();
     final mn     = locale.isMN;
 
-    final name  = auth.displayName.isEmpty ? (mn ? 'Хэрэглэгч' : 'User') : auth.displayName;
+    final firstName = (auth.profile?['first_name'] as String? ?? '').trim();
+    final lastName  = (auth.profile?['last_name']  as String? ?? '').trim();
+    final fullName  = [lastName, firstName].where((s) => s.isNotEmpty).join(' ');
+    final name = auth.isStudent
+        ? fullName.isNotEmpty ? fullName : auth.displayName.isNotEmpty ? auth.displayName : (mn ? 'Хэрэглэгч' : 'User')
+        : auth.displayName.isNotEmpty ? auth.displayName : (mn ? 'Хэрэглэгч' : 'User');
     final email = auth.profile?['email'] as String? ?? '';
     final sub   = auth.isStudent
       ? '${auth.profile?['university'] ?? ''}'
@@ -230,13 +246,9 @@ class ProfileScreen extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(sub, style: const TextStyle(fontSize: 11, color: AppColors.faint)),
                 ],
-                const SizedBox(height: 18),
-                SizedBox(width: 200, child: ElevatedButton.icon(
-                  onPressed: () => context.push('/cv'),
-                  icon: const Icon(Icons.edit_outlined, size: 16),
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white, elevation: 0, minimumSize: const Size(0, 42), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                  label: Text(mn ? 'Профайл засах' : 'Edit Profile', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                )),
+                const SizedBox(height: 16),
+                // ── Бүртгэлийн мэдээллийн card ────────────────
+                _StudentInfoCard(profile: auth.profile),
               ]),
             ).animate().fadeIn(duration: 400.ms),
 
@@ -402,6 +414,56 @@ class ProfileScreen extends StatelessWidget {
     ])));
 }
 
+// ── Student Info Card ─────────────────────────────────────────
+class _StudentInfoCard extends StatelessWidget {
+  final Map<String, dynamic>? profile;
+  const _StudentInfoCard({required this.profile});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = profile ?? {};
+    final major     = p['major']      as String? ?? '';
+    final phone     = p['phone']      as String? ?? '';
+    final country   = p['country']    as String? ?? '';
+    final rawDate   = p['birth_date'] as String? ?? '';
+    final birthDate = rawDate.isNotEmpty ? rawDate.substring(0, 10) : '';
+    final year      = p['year'];
+    final yearStr   = year != null && year != 0 ? '$year-р курс' : '';
+
+    final items = <(IconData, String, String)>[
+      if (major.isNotEmpty)     (Icons.school_outlined,         'Мэргэжил',         major),
+      if (phone.isNotEmpty)     (Icons.phone_outlined,          'Утас',             phone),
+      if (birthDate.isNotEmpty) (Icons.cake_outlined,           'Төрсөн огноо',     birthDate),
+      if (country.isNotEmpty)   (Icons.public_outlined,         'Улс',              country),
+      if (yearStr.isNotEmpty)   (Icons.layers_outlined,         'Курс',             yearStr),
+    ];
+
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: AppColors.bg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border, width: 0.5),
+      ),
+      child: Column(
+        children: items.map((item) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 5),
+          child: Row(children: [
+            Icon(item.$1, size: 15, color: AppColors.primary),
+            const SizedBox(width: 8),
+            Text(item.$2, style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+            const Spacer(),
+            Text(item.$3, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.text)),
+          ]),
+        )).toList(),
+      ),
+    );
+  }
+}
+
 // ── Menu section ──────────────────────────────────────────────
 class _MenuSection extends StatelessWidget {
   final List<_MenuItem> items;
@@ -486,20 +548,21 @@ class _EditProfileSheet extends StatefulWidget {
   @override State<_EditProfileSheet> createState() => _EditProfileSheetState();
 }
 class _EditProfileSheetState extends State<_EditProfileSheet> {
-  late final TextEditingController _name, _phone, _desc, _location, _website, _employeeCount, _history, _foundedYear;
+  late final TextEditingController _firstName, _lastName, _phone, _desc, _location, _website, _employeeCount, _history, _foundedYear;
   bool _saving = false;
 
   @override void initState() {
     super.initState();
     final p = widget.auth.profile ?? {};
-    _name          = TextEditingController(text: widget.auth.displayName);
-    _phone         = TextEditingController(text: p['phone']          as String? ?? '');
-    _desc          = TextEditingController(text: p['description']    as String? ?? '');
-    _location      = TextEditingController(text: p['location']       as String? ?? '');
-    _website       = TextEditingController(text: p['website']        as String? ?? '');
+    _firstName     = TextEditingController(text: p['first_name']  as String? ?? widget.auth.displayName);
+    _lastName      = TextEditingController(text: p['last_name']   as String? ?? '');
+    _phone         = TextEditingController(text: p['phone']?.toString() ?? '');
+    _desc          = TextEditingController(text: p['description'] as String? ?? '');
+    _location      = TextEditingController(text: p['location']    as String? ?? '');
+    _website       = TextEditingController(text: p['website']     as String? ?? '');
     final ec = p['employee_count'];
     _employeeCount = TextEditingController(text: ec != null && ec != 0 ? ec.toString() : '');
-    _history       = TextEditingController(text: p['history']        as String? ?? '');
+    _history       = TextEditingController(text: p['history']     as String? ?? '');
     final fy = p['founded_year'];
     _foundedYear   = TextEditingController(text: fy != null && fy != 0 ? fy.toString() : '');
   }
@@ -515,9 +578,18 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
           style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
         const SizedBox(height: 16),
 
-        FieldLabel(isCompany ? 'Компанийн нэр' : 'Нэр'),
-        TextField(controller: _name,
-          decoration: const InputDecoration(prefixIcon: Icon(Icons.business_outlined, size: 18, color: AppColors.faint))),
+        if (isCompany) ...[
+          const FieldLabel('Компанийн нэр'),
+          TextField(controller: _firstName,
+            decoration: const InputDecoration(prefixIcon: Icon(Icons.business_outlined, size: 18, color: AppColors.faint))),
+        ] else ...[
+          const FieldLabel('Овог'),
+          TextField(controller: _lastName,
+            decoration: const InputDecoration(prefixIcon: Icon(Icons.person_outline, size: 18, color: AppColors.faint), hintText: 'Төмөр')),
+          const FieldLabel('Нэр'),
+          TextField(controller: _firstName,
+            decoration: const InputDecoration(prefixIcon: Icon(Icons.person_outline, size: 18, color: AppColors.faint), hintText: 'Болд')),
+        ],
 
         const FieldLabel('Утасны дугаар'),
         TextField(controller: _phone, keyboardType: TextInputType.phone,
@@ -568,10 +640,14 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
       final uid  = auth.uid;
       final Map<String, dynamic> data;
       if (auth.isStudent) {
-        data = {'firstName': _name.text.trim(), 'phone': _phone.text.trim()};
+        data = {
+          'firstName': _firstName.text.trim(),
+          'lastName':  _lastName.text.trim(),
+          'phone':     _phone.text.trim(),
+        };
       } else {
         data = {
-          'name':        _name.text.trim(),
+          'name':        _firstName.text.trim(),
           'phone':       _phone.text.trim(),
           'description': _desc.text.trim(),
           'location':    _location.text.trim(),
@@ -599,7 +675,7 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
   }
 
   @override void dispose() {
-    for (final c in [_name, _phone, _desc, _location, _website, _employeeCount, _history, _foundedYear]) { c.dispose(); }
+    for (final c in [_firstName, _lastName, _phone, _desc, _location, _website, _employeeCount, _history, _foundedYear]) { c.dispose(); }
     super.dispose();
   }
 }
@@ -721,7 +797,7 @@ class _AvatarPickerState extends State<_AvatarPicker> {
           ? '/companies/${widget.uid}'
           : '/students/${widget.uid}';
       final data = await ApiClient.get(endpoint) as Map<String, dynamic>?;
-      final photo = data?['photo'] as String?;
+      final photo = (data?['photo'] ?? data?['avatar_url']) as String?;
       if (photo != null && photo.isNotEmpty && mounted) {
         final decoded = base64Decode(photo);
         await prefs.setString(_prefKey, photo);

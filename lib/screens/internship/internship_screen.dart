@@ -9,7 +9,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../theme/app_theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
-import '../messages/messages_screen.dart';
 
 class InternshipScreen extends StatefulWidget {
   const InternshipScreen({super.key});
@@ -904,21 +903,6 @@ class _PostDetailSheetState extends State<_PostDetailSheet> {
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
                 child: Row(children: [
-                  Expanded(child: OutlinedButton.icon(
-                    onPressed: () {
-                      final cid   = widget.post['company_id']   as String? ?? '';
-                      final cname = widget.post['company_name'] as String? ?? 'Компани';
-                      Navigator.push(context, MaterialPageRoute(
-                        builder: (_) => ChatScreen(otherUid: cid, otherName: cname)));
-                    },
-                    icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16),
-                    label: const Text('Мессеж'),
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size(0, 46),
-                      side: const BorderSide(color: AppColors.primary),
-                      foregroundColor: AppColors.primary),
-                  )),
-                  const SizedBox(width: 10),
                   Expanded(child: ElevatedButton(
                     onPressed: () { Navigator.pop(context); widget.onApply(); },
                     style: ElevatedButton.styleFrom(minimumSize: const Size(0, 46)),

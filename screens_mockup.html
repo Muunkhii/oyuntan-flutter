@@ -1,0 +1,1472 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Оюунтан — UI Showcase</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:#060B14;
+  font-family:'Inter',system-ui,sans-serif;
+  color:#fff;
+  min-height:100vh;
+  overflow-x:hidden;
+}
+
+/* ─── BG mesh ─── */
+body::before{
+  content:'';
+  position:fixed;inset:0;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 10%, rgba(55,48,163,0.18) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 80%, rgba(14,116,144,0.12) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 60% at 50% 50%, rgba(124,58,237,0.06) 0%, transparent 70%);
+  pointer-events:none;z-index:0;
+}
+
+/* ─── Hero ─── */
+.hero{
+  position:relative;z-index:1;
+  text-align:center;
+  padding:72px 24px 56px;
+}
+.hero-badge{
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(55,48,163,0.2);
+  border:1px solid rgba(99,102,241,0.3);
+  border-radius:100px;
+  padding:6px 16px;
+  font-size:12px;font-weight:600;color:#A5B4FC;
+  letter-spacing:0.3px;margin-bottom:24px;
+}
+.hero h1{
+  font-size:clamp(36px,6vw,64px);
+  font-weight:900;
+  letter-spacing:-2px;
+  line-height:1.05;
+  background:linear-gradient(135deg,#fff 30%,#A5B4FC);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  margin-bottom:16px;
+}
+.hero p{
+  font-size:16px;color:#64748B;
+  max-width:480px;margin:0 auto 40px;
+  line-height:1.7;
+}
+.hero-stats{
+  display:inline-flex;gap:32px;
+  background:rgba(255,255,255,0.04);
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:16px;
+  padding:16px 32px;
+}
+.hero-stats span{font-size:13px;color:#64748B;}
+.hero-stats strong{color:#fff;font-weight:700;}
+
+/* ─── Section ─── */
+.section{
+  position:relative;z-index:1;
+  padding:24px 32px 8px;
+  max-width:1600px;margin:0 auto;
+}
+.section-header{
+  display:flex;align-items:center;gap:14px;
+  margin-bottom:28px;
+}
+.section-dot{
+  width:8px;height:8px;
+  border-radius:50%;
+  background:linear-gradient(135deg,#6366F1,#8B5CF6);
+  box-shadow:0 0 12px rgba(99,102,241,0.6);
+}
+.section-header h2{
+  font-size:11px;font-weight:700;
+  color:#6366F1;
+  letter-spacing:2.5px;
+  text-transform:uppercase;
+}
+.section-line{
+  flex:1;height:1px;
+  background:linear-gradient(90deg,rgba(99,102,241,0.3),transparent);
+}
+
+/* ─── Grid ─── */
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
+  gap:28px;
+  margin-bottom:48px;
+}
+.grid-3{grid-template-columns:repeat(3,1fr);}
+.grid-2{grid-template-columns:repeat(2,1fr);}
+@media(max-width:900px){.grid-3,.grid-2{grid-template-columns:1fr;}}
+
+/* ─── Phone ─── */
+.phone-wrap{
+  display:flex;flex-direction:column;align-items:center;gap:14px;
+}
+.screen-label{
+  font-size:11px;font-weight:600;
+  color:#475569;
+  letter-spacing:0.4px;
+  text-align:center;
+}
+.screen-label strong{
+  display:block;
+  font-size:13px;font-weight:700;
+  color:#94A3B8;margin-bottom:2px;
+}
+
+/* Phone shell */
+.phone{
+  width:270px;
+  background:#0D1117;
+  border-radius:44px;
+  padding:3px;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.06),
+    0 0 0 3px #0D1117,
+    0 0 0 4px rgba(255,255,255,0.04),
+    0 24px 48px rgba(0,0,0,0.7),
+    0 8px 16px rgba(0,0,0,0.4),
+    inset 0 1px 0 rgba(255,255,255,0.08);
+  position:relative;
+  transition:transform 0.3s ease, box-shadow 0.3s ease;
+}
+.phone:hover{
+  transform:translateY(-6px) scale(1.01);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.08),
+    0 0 0 3px #0D1117,
+    0 0 0 4px rgba(255,255,255,0.06),
+    0 36px 64px rgba(0,0,0,0.8),
+    0 12px 24px rgba(0,0,0,0.5);
+}
+/* Side buttons */
+.phone::before{
+  content:'';
+  position:absolute;
+  left:-4px;top:80px;
+  width:3px;height:32px;
+  background:rgba(255,255,255,0.12);
+  border-radius:2px 0 0 2px;
+  box-shadow:0 40px 0 rgba(255,255,255,0.12),0 80px 0 rgba(255,255,255,0.12);
+}
+.phone::after{
+  content:'';
+  position:absolute;
+  right:-4px;top:100px;
+  width:3px;height:56px;
+  background:rgba(255,255,255,0.12);
+  border-radius:0 2px 2px 0;
+}
+
+.phone-screen{
+  width:100%;
+  height:580px;
+  border-radius:42px;
+  overflow:hidden;
+  position:relative;
+  background:#fff;
+}
+
+/* Dynamic island */
+.island{
+  position:absolute;
+  top:10px;left:50%;
+  transform:translateX(-50%);
+  width:88px;height:26px;
+  background:#000;
+  border-radius:20px;
+  z-index:100;
+  display:flex;align-items:center;justify-content:flex-end;
+  padding-right:7px;
+  gap:4px;
+}
+.island::after{
+  content:'';
+  width:9px;height:9px;
+  border-radius:50%;
+  background:#1C1C1E;
+  border:1.5px solid #2C2C2E;
+}
+
+/* Status bar */
+.sb{
+  height:44px;
+  display:flex;align-items:flex-end;
+  justify-content:space-between;
+  padding:0 20px 6px;
+  font-size:11px;font-weight:600;
+  position:relative;z-index:5;
+}
+.sb-time{font-size:14px;font-weight:700;letter-spacing:-0.5px;}
+.sb-icons{display:flex;align-items:center;gap:5px;}
+.battery{
+  display:flex;align-items:center;
+  gap:2px;
+}
+.batt-body{
+  width:22px;height:11px;
+  border:1.5px solid currentColor;
+  border-radius:3px;
+  position:relative;
+  opacity:0.8;
+}
+.batt-body::after{
+  content:'';
+  position:absolute;
+  right:-5px;top:50%;transform:translateY(-50%);
+  width:3px;height:5px;
+  background:currentColor;
+  border-radius:0 1px 1px 0;
+  opacity:0.5;
+}
+.batt-fill{
+  position:absolute;
+  left:1px;top:1px;bottom:1px;
+  width:75%;
+  background:currentColor;
+  border-radius:1px;
+}
+
+/* ─── APP COLORS ─── */
+:root{
+  --p:#3730A3;--pl:#EEF2FF;
+  --g:#16A34A;--gl:#F0FDF4;
+  --r:#DC2626;--rl:#FEF2F2;
+  --a:#F59E0B;--al:#FFFBEB;
+  --t:#0E7490;--tl:#ECFEFF;
+  --pu:#7C3AED;--pul:#F5F3FF;
+  --bg:#F8F9FE;
+  --bd:#E2E8F0;
+  --mu:#64748B;--fa:#94A3B8;
+  --txt:#0F172A;
+}
+
+/* ─── Utility ─── */
+.fw{width:100%;}
+.flex{display:flex;}
+.fac{align-items:center;}
+.fjb{justify-content:space-between;}
+.fdc{flex-direction:column;}
+.g4{gap:4px;}.g6{gap:6px;}.g8{gap:8px;}.g10{gap:10px;}.g12{gap:12px;}
+.mt4{margin-top:4px;}.mt6{margin-top:6px;}.mt8{margin-top:8px;}.mt10{margin-top:10px;}.mt12{margin-top:12px;}.mt14{margin-top:14px;}.mt16{margin-top:16px;}
+.mb4{margin-bottom:4px;}.mb6{margin-bottom:6px;}.mb8{margin-bottom:8px;}.mb10{margin-bottom:10px;}.mb12{margin-bottom:12px;}
+.px14{padding:0 14px;}.px16{padding:0 16px;}.px18{padding:0 18px;}
+.p10{padding:10px;}.p12{padding:12px;}.p14{padding:14px;}.p16{padding:16px;}
+
+/* Tag */
+.tag{
+  display:inline-flex;align-items:center;
+  padding:3px 8px;border-radius:100px;
+  font-size:9px;font-weight:600;
+  white-space:nowrap;
+}
+.tag-g{background:var(--gl);color:var(--g);}
+.tag-p{background:var(--pl);color:var(--p);}
+.tag-r{background:var(--rl);color:var(--r);}
+.tag-a{background:var(--al);color:#92400E;}
+.tag-m{background:#F1F5F9;color:var(--mu);}
+.tag-t{background:var(--tl);color:var(--t);}
+.tag-pu{background:var(--pul);color:var(--pu);}
+
+/* Card */
+.card{
+  background:#fff;
+  border:1px solid var(--bd);
+  border-radius:14px;
+  padding:12px;
+  margin-bottom:8px;
+}
+.card-sm{border-radius:10px;padding:10px;margin-bottom:6px;}
+
+/* Gradient headers */
+.gh-indigo{background:linear-gradient(135deg,#312E81 0%,#4338CA 50%,#6366F1 100%);}
+.gh-blue{background:linear-gradient(135deg,#0F172A 0%,#1E3A8A 55%,#2563EB 100%);}
+.gh-teal{background:linear-gradient(135deg,#164E63 0%,#0E7490 50%,#06B6D4 100%);}
+.gh-purple{background:linear-gradient(135deg,#1E0545 0%,#5B21B6 55%,#7C3AED 100%);}
+.gh-dark{background:linear-gradient(135deg,#0F172A 0%,#1E293B 100%);}
+
+/* Nav */
+.nav{
+  position:absolute;bottom:0;left:0;right:0;
+  height:60px;
+  background:rgba(255,255,255,0.95);
+  backdrop-filter:blur(20px);
+  border-top:1px solid rgba(0,0,0,0.06);
+  display:flex;align-items:center;justify-content:space-around;
+  padding:0 6px 4px;
+  z-index:50;
+}
+.nav-item{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  flex:1;padding:4px 0;
+  cursor:pointer;
+}
+.ni-icon{font-size:18px;line-height:1;}
+.ni-label{font-size:8.5px;color:var(--fa);font-weight:500;}
+.ni-label.on{color:var(--p);font-weight:700;}
+.nav-pill{
+  background:var(--pl);
+  border-radius:16px;
+  padding:4px 12px;
+}
+.nav-pill .ni-label{color:var(--p);}
+
+/* Inputs */
+.inp{
+  width:100%;
+  background:#F8FAFC;
+  border:1.5px solid var(--bd);
+  border-radius:10px;
+  padding:10px 12px 10px 36px;
+  font-size:12px;color:var(--txt);
+  font-family:'Inter',sans-serif;
+  position:relative;
+}
+.inp-wrap{position:relative;margin-bottom:2px;}
+.inp-ico{
+  position:absolute;left:11px;top:50%;
+  transform:translateY(-50%);
+  font-size:13px;opacity:0.4;
+  z-index:1;
+}
+.fl{font-size:10px;font-weight:500;color:var(--mu);margin-bottom:5px;margin-top:11px;}
+
+/* Btn */
+.btn{
+  width:100%;border:none;
+  border-radius:12px;
+  padding:12px;
+  font-size:13px;font-weight:600;
+  font-family:'Inter',sans-serif;
+  cursor:pointer;
+}
+.btn-p{background:var(--p);color:#fff;}
+.btn-t{background:var(--t);color:#fff;}
+.btn-o{background:#fff;color:var(--p);border:1.5px solid rgba(55,48,163,0.25);}
+.btn-pu{background:var(--pu);color:#fff;}
+.btn-r{background:var(--rl);color:var(--r);border:none;}
+
+/* Avatar */
+.av{
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-weight:700;color:#fff;
+  flex-shrink:0;
+}
+.av48{width:48px;height:48px;font-size:18px;}
+.av40{width:40px;height:40px;font-size:15px;}
+.av36{width:36px;height:36px;font-size:13px;}
+.av32{width:32px;height:32px;font-size:12px;}
+.av28{width:28px;height:28px;font-size:10px;}
+
+/* Company logo box */
+.logo-box{
+  border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;flex-shrink:0;
+}
+.lb36{width:36px;height:36px;}
+.lb40{width:40px;height:40px;font-size:18px;}
+
+/* Content scroll area */
+.scroll{
+  flex:1;
+  overflow:hidden;
+  padding:10px 14px;
+  display:flex;flex-direction:column;
+}
+.scroll-pb{padding-bottom:64px;}
+
+/* Section label inside app */
+.app-section{
+  font-size:11px;font-weight:700;
+  color:var(--txt);
+  margin-bottom:8px;margin-top:4px;
+}
+
+/* Divider */
+.div{height:1px;background:var(--bd);margin:8px 0;}
+
+/* Chip */
+.chip{
+  display:inline-flex;align-items:center;
+  padding:4px 10px;border-radius:100px;
+  font-size:9px;font-weight:600;
+  background:rgba(255,255,255,0.18);color:#fff;
+}
+
+/* Progress bar */
+.prog-track{height:3px;background:rgba(255,255,255,0.2);border-radius:2px;margin-top:12px;}
+.prog-fill{height:3px;background:#fff;border-radius:2px;}
+
+/* Star */
+.stars{display:flex;gap:3px;}
+.star{font-size:16px;}
+
+/* Handle */
+.handle{
+  width:36px;height:4px;background:var(--bd);
+  border-radius:2px;margin:0 auto 12px;
+}
+
+/* Orb */
+.orb{
+  position:absolute;
+  border-radius:50%;
+  background:rgba(255,255,255,0.07);
+  pointer-events:none;
+}
+
+/* footer */
+footer{
+  position:relative;z-index:1;
+  text-align:center;
+  padding:56px 24px 40px;
+  border-top:1px solid rgba(255,255,255,0.06);
+  margin-top:32px;
+  color:#374151;
+}
+footer strong{color:#6366F1;}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════ HERO ══════════════════════════ -->
+<div class="hero">
+  <div class="hero-badge">
+    <span>🎓</span> Оюунтан · UI Showcase · 2025
+  </div>
+  <h1>Карьерын гарааны<br>платформ</h1>
+  <p>Flutter · Node.js · PostgreSQL — бүх дэлгэцийн визуал загвар</p>
+  <div class="hero-stats">
+    <div><strong>19</strong> <span>дэлгэц</span></div>
+    <div style="width:1px;height:24px;background:rgba(255,255,255,0.08);"></div>
+    <div><strong>2</strong> <span>хэрэглэгч</span></div>
+    <div style="width:1px;height:24px;background:rgba(255,255,255,0.08);"></div>
+    <div><strong>Flutter</strong> <span>+ Node.js</span></div>
+  </div>
+</div>
+
+<!-- ══════════════════════ AUTH ══════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-dot"></div>
+    <h2>Auth Screens</h2>
+    <div class="section-line"></div>
+  </div>
+
+  <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(270px,1fr));">
+
+    <!-- 1 Start -->
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="island"></div>
+          <!-- Full gradient bg -->
+          <div style="position:absolute;inset:0;background:linear-gradient(145deg,#0F172A 0%,#1E3A8A 52%,#3B82F6 100%);"></div>
+          <!-- Orbs -->
+          <div class="orb" style="width:180px;height:180px;top:-50px;right:-50px;"></div>
+          <div class="orb" style="width:130px;height:130px;top:220px;left:-50px;background:rgba(255,255,255,0.05);"></div>
+          <div class="orb" style="width:90px;height:90px;bottom:100px;right:-20px;background:rgba(255,255,255,0.05);"></div>
+          <!-- Content -->
+          <div style="position:absolute;inset:0;display:flex;flex-direction:column;">
+            <div class="sb" style="color:#fff;">
+              <span class="sb-time">9:41</span>
+              <div class="sb-icons">
+                <span style="font-size:10px;opacity:0.8;">▲▲▲</span>
+                <div class="battery" style="color:#fff;">
+                  <div class="batt-body"><div class="batt-fill"></div></div>
+                </div>
+              </div>
+            </div>
+            <!-- Lang toggle -->
+            <div style="text-align:right;padding:0 18px 0;">
+              <span style="background:rgba(255,255,255,0.14);border:1px solid rgba(255,255,255,0.2);border-radius:100px;padding:5px 12px;font-size:10px;font-weight:700;color:#fff;">🌐 МН</span>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 24px;">
+              <!-- Logo -->
+              <div style="width:72px;height:72px;background:rgba(255,255,255,0.12);border:1.5px solid rgba(255,255,255,0.25);border-radius:22px;display:flex;align-items:center;justify-content:center;font-size:32px;margin-bottom:16px;box-shadow:0 8px 24px rgba(0,0,0,0.3);">🎓</div>
+              <div style="font-size:30px;font-weight:900;color:#fff;letter-spacing:-1.2px;line-height:1;margin-bottom:6px;">Оюунтан</div>
+              <div style="font-size:12px;color:rgba(255,255,255,0.55);margin-bottom:36px;">Карьерын гарааны платформ</div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.6);font-weight:500;margin-bottom:12px;">Та хэн бэ?</div>
+              <!-- Cards -->
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;">
+                <!-- Student -->
+                <div style="background:linear-gradient(140deg,#3B82F6,#1D4ED8);border-radius:18px;padding:18px 12px;text-align:center;box-shadow:0 8px 20px rgba(29,78,216,0.4);">
+                  <div style="width:44px;height:44px;background:rgba(255,255,255,0.18);border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:20px;margin:0 auto 10px;">👤</div>
+                  <div style="font-size:13px;font-weight:800;color:#fff;margin-bottom:2px;">Оюутан</div>
+                  <div style="font-size:9px;color:rgba(255,255,255,0.6);margin-bottom:12px;">Student</div>
+                  <div style="background:rgba(255,255,255,0.18);border-radius:100px;padding:5px 10px;font-size:10px;font-weight:600;color:#fff;">Нэвтрэх →</div>
+                </div>
+                <!-- Company -->
+                <div style="background:linear-gradient(140deg,#7C3AED,#4C1D95);border-radius:18px;padding:18px 12px;text-align:center;box-shadow:0 8px 20px rgba(76,29,149,0.4);">
+                  <div style="width:44px;height:44px;background:rgba(255,255,255,0.18);border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:20px;margin:0 auto 10px;">🏢</div>
+                  <div style="font-size:13px;font-weight:800;color:#fff;margin-bottom:2px;">Компани</div>
+                  <div style="font-size:9px;color:rgba(255,255,255,0.6);margin-bottom:12px;">Company</div>
+                  <div style="background:rgba(255,255,255,0.18);border-radius:100px;padding:5px 10px;font-size:10px;font-weight:600;color:#fff;">Нэвтрэх →</div>
+                </div>
+              </div>
+            </div>
+            <div style="text-align:center;padding:12px;font-size:9px;color:rgba(255,255,255,0.3);">© 2025 Oyuntan. Бүх эрх хамгаалагдсан.</div>
+          </div>
+        </div>
+      </div>
+      <div class="screen-label"><strong>01 — Эхлэх дэлгэц</strong>Start Screen</div>
+    </div>
+
+    <!-- 2 Login Student -->
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="island"></div>
+          <div style="position:absolute;inset:0;background:var(--bg);display:flex;flex-direction:column;">
+            <!-- Header -->
+            <div style="background:linear-gradient(140deg,#1E1B5E,#3730A3,#6366F1);padding:0 18px 20px;border-radius:0 0 26px 26px;position:relative;overflow:hidden;flex-shrink:0;">
+              <div class="orb" style="width:120px;height:120px;top:-30px;right:-30px;"></div>
+              <div class="sb" style="color:#fff;">
+                <span style="font-size:12px;color:rgba(255,255,255,0.7);">← Буцах</span>
+                <div style="background:rgba(255,255,255,0.12);border-radius:100px;padding:4px 10px;font-size:9px;font-weight:700;color:#fff;">МН | EN</div>
+              </div>
+              <div style="text-align:center;padding:4px 0 0;">
+                <div style="width:56px;height:56px;background:rgba(255,255,255,0.14);border:1.5px solid rgba(255,255,255,0.25);border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 10px;">🎓</div>
+                <div style="font-size:20px;font-weight:800;color:#fff;letter-spacing:-0.5px;margin-bottom:4px;">Оюутан нэвтрэх</div>
+                <div style="font-size:10px;color:rgba(255,255,255,0.55);">Оюунтан платформд тавтай морил</div>
+              </div>
+            </div>
+            <!-- Form card -->
+            <div style="flex:1;padding:16px 18px 12px;overflow:hidden;">
+              <div class="handle"></div>
+              <!-- Badge -->
+              <div style="text-align:center;margin-bottom:14px;">
+                <span style="background:var(--pl);border-radius:100px;padding:5px 14px;font-size:10px;font-weight:600;color:var(--p);">👤 Оюутан</span>
+              </div>
+              <div class="fl" style="margin-top:0;">Имэйл</div>
+              <div class="inp-wrap"><span class="inp-ico">✉️</span><div class="inp" style="color:var(--fa);">name@example.com</div></div>
+              <div class="fl">Нууц үг</div>
+              <div class="inp-wrap"><span class="inp-ico">🔒</span><div class="inp" style="color:var(--fa);">••••••••</div></div>
+              <div style="text-align:right;margin:6px 0 14px;"><span style="font-size:10px;color:var(--p);font-weight:500;">Нууц үг мартсан уу?</span></div>
+              <button class="btn btn-p" style="font-size:12px;padding:11px;margin-bottom:8px;">Нэвтрэх</button>
+              <button class="btn btn-o" style="font-size:12px;padding:10px;">Бүртгүүлэх</button>
+              <div style="text-align:center;margin-top:10px;font-size:10px;color:var(--fa);text-decoration:underline;">Тусламж авах</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="screen-label"><strong>02 — Оюутан нэвтрэх</strong>Student Login</div>
+    </div>
+
+    <!-- 3 Login Company -->
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="island"></div>
+          <div style="position:absolute;inset:0;background:var(--bg);display:flex;flex-direction:column;">
+            <div style="background:linear-gradient(140deg,#1E0545,#5B21B6,#7C3AED);padding:0 18px 20px;border-radius:0 0 26px 26px;position:relative;overflow:hidden;flex-shrink:0;">
+              <div class="orb" style="width:100px;height:100px;top:-20px;right:-20px;"></div>
+              <div class="sb" style="color:#fff;">
+                <span style="font-size:12px;color:rgba(255,255,255,0.7);">← Буцах</span>
+                <div style="background:rgba(255,255,255,0.12);border-radius:100px;padding:4px 10px;font-size:9px;font-weight:700;color:#fff;">МН | EN</div>
+              </div>
+              <div style="text-align:center;padding:4px 0 0;">
+                <div style="width:56px;height:56px;background:rgba(255,255,255,0.14);border:1.5px solid rgba(255,255,255,0.25);border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 10px;">🏢</div>
+                <div style="font-size:20px;font-weight:800;color:#fff;letter-spacing:-0.5px;margin-bottom:4px;">Компани нэвтрэх</div>
+                <div style="font-size:10px;color:rgba(255,255,255,0.55);">Оюунтан платформд тавтай морил</div>
+              </div>
+            </div>
+            <div style="flex:1;padding:16px 18px 12px;overflow:hidden;">
+              <div class="handle"></div>
+              <div style="text-align:center;margin-bottom:14px;">
+                <span style="background:var(--pul);border-radius:100px;padding:5px 14px;font-size:10px;font-weight:600;color:var(--pu);">🏢 Компани</span>
+              </div>
+              <div class="fl" style="margin-top:0;">Имэйл</div>
+              <div class="inp-wrap"><span class="inp-ico">✉️</span><div class="inp" style="color:var(--fa);">company@example.com</div></div>
+              <div class="fl">Нууц үг</div>
+              <div class="inp-wrap"><span class="inp-ico">🔒</span><div class="inp" style="color:var(--fa);">••••••••</div></div>
+              <div style="text-align:right;margin:6px 0 14px;"><span style="font-size:10px;color:var(--pu);font-weight:500;">Нууц үг мартсан уу?</span></div>
+              <button class="btn btn-pu" style="font-size:12px;padding:11px;margin-bottom:8px;">Нэвтрэх</button>
+              <button class="btn" style="font-size:12px;padding:10px;background:#fff;color:var(--pu);border:1.5px solid rgba(124,58,237,0.25);">Бүртгүүлэх</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="screen-label"><strong>03 — Компани нэвтрэх</strong>Company Login</div>
+    </div>
+
+    <!-- 4 Register Student -->
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="island"></div>
+          <div style="position:absolute;inset:0;background:var(--bg);display:flex;flex-direction:column;">
+            <div class="gh-indigo" style="padding:0 18px 18px;border-radius:0 0 24px 24px;flex-shrink:0;">
+              <div class="sb" style="color:#fff;"><span style="font-size:11px;opacity:0.7;">← Буцах</span><span style="font-size:10px;color:rgba(255,255,255,0.6);">Алхам 1 / 3</span></div>
+              <div style="font-size:17px;font-weight:800;color:#fff;margin-bottom:3px;">Оюутан бүртгэл</div>
+              <div style="font-size:10px;color:rgba(255,255,255,0.6);margin-bottom:10px;">Үндсэн мэдээллээ оруулна уу</div>
+              <div class="prog-track"><div class="prog-fill" style="width:33%;"></div></div>
+            </div>
+            <div style="flex:1;overflow:hidden;padding:12px 16px;">
+              <div class="fl" style="margin-top:0;">Нэр</div>
+              <div class="inp-wrap"><span class="inp-ico">👤</span><div class="inp">Мөнхбат</div></div>
+              <div class="fl">Овог</div>
+              <div class="inp-wrap"><span class="inp-ico">👤</span><div class="inp">М</div></div>
+              <div class="fl">Их сургууль</div>
+              <div class="inp-wrap"><span class="inp-ico">🏫</span><div class="inp">Сити Их Сургууль</div></div>
+              <div class="fl">Мэргэжил</div>
+              <div class="inp-wrap"><span class="inp-ico">📚</span><div class="inp">Програм хангамж</div></div>
+              <div class="fl">Утасны дугаар</div>
+              <div class="inp-wrap"><span class="inp-ico">📞</span><div class="inp">+976 88330925</div></div>
+              <div style="margin-top:14px;"><button class="btn btn-p" style="font-size:12px;padding:11px;">Дараах →</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="screen-label"><strong>04 — Оюутан бүртгэл</strong>Student Registration</div>
+    </div>
+
+    <!-- 5 Welcome -->
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="island"></div>
+          <div style="position:absolute;inset:0;background:linear-gradient(160deg,#1E1B5E 0%,#3730A3 45%,#6366F1 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 24px;">
+            <div class="orb" style="width:160px;height:160px;top:-40px;right:-40px;"></div>
+            <div class="orb" style="width:100px;height:100px;bottom:60px;left:-30px;background:rgba(255,255,255,0.05);"></div>
+            <div style="text-align:center;">
+              <div style="width:72px;height:72px;background:rgba(255,255,255,0.14);border:2px solid rgba(255,255,255,0.25);border-radius:22px;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 16px;">🎉</div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.5);font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">Тавтай морил</div>
+              <div style="font-size:24px;font-weight:900;color:#fff;letter-spacing:-0.8px;margin-bottom:4px;">Мөнхбат 👋</div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.55);line-height:1.6;margin-bottom:28px;">Оюунтан платформд амжилттай бүртгэгдлээ. Дадлагын боломжуудыг судалж эхэлцгээе!</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:24px;">
+                <div style="background:rgba(255,255,255,0.12);border-radius:12px;padding:12px 6px;text-align:center;"><div style="font-size:20px;margin-bottom:5px;">📋</div><div style="font-size:8.5px;color:#fff;font-weight:600;line-height:1.3;">Профайл<br>бөглөх</div></div>
+                <div style="background:rgba(255,255,255,0.12);border-radius:12px;padding:12px 6px;text-align:center;"><div style="font-size:20px;margin-bottom:5px;">🔍</div><div style="font-size:8.5px;color:#fff;font-weight:600;line-height:1.3;">Дадлага<br>хайх</div></div>
+                <div style="background:rgba(255,255,255,0.12);border-radius:12px;padding:12px 6px;text-align:center;"><div style="font-size:20px;margin-bottom:5px;">📅</div><div style="font-size:8.5px;color:#fff;font-weight:600;line-height:1.3;">Хуваарь<br>нэмэх</div></div>
+              </div>
+              <div style="background:#fff;color:var(--p);border:none;border-radius:14px;padding:13px 32px;font-size:13px;font-weight:700;display:inline-block;">Эхлэх →</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="screen-label"><strong>05 — Тавтай морил</strong>Welcome Screen</div>
+    </div>
+
+  </div><!-- /grid auth -->
+</div>
+
+<!-- ══════════════════════ HOME ══════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-dot" style="background:linear-gradient(135deg,#06B6D4,#0E7490);box-shadow:0 0 12px rgba(6,182,212,0.6);"></div>
+    <h2 style="color:#06B6D4;">Home Screens</h2>
+    <div class="section-line" style="background:linear-gradient(90deg,rgba(6,182,212,0.3),transparent);"></div>
+  </div>
+
+  <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(270px,1fr));">
+
+    <!-- Student Home -->
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="island"></div>
+          <div style="position:absolute;inset:0;background:var(--bg);display:flex;flex-direction:column;">
+            <!-- Header -->
+            <div class="gh-indigo" style="padding:0 16px 18px;border-radius:0 0 26px 26px;flex-shrink:0;position:relative;overflow:hidden;">
+              <div class="orb" style="width:100px;height:100px;top:-20px;right:10px;"></div>
+              <div class="sb" style="color:#fff;">
+                <span class="sb-time">9:41</span>
+                <div class="sb-icons">
+                  <span style="font-size:9px;opacity:0.8;">▲▲▲</span>
+                  <div class="battery" style="color:#fff;"><div class="batt-body"><div class="batt-fill"></div></div></div>
+                </div>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                <div>
+                  <div style="font-size:10px;color:rgba(255,255,255,0.6);">Өглөөний мэнд</div>
+                  <div style="font-size:19px;font-weight:800;color:#fff;letter-spacing:-0.5px;">Мөнхбат</div>
+                </div>
+                <div style="position:relative;">
+                  <div style="width:36px;height:36px;background:rgba(255,255,255,0.16);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:16px;">🔔</div>
+                  <div style="position:absolute;top:5px;right:5px;width:8px;height:8px;background:#FF4444;border-radius:50%;border:1.5px solid #3730A3;"></div>
+                </div>
+              </div>
+              <!-- Weather bar -->
+              <div style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:9px 12px;display:flex;align-items:center;gap:9px;">
+                <span style="font-size:16px;">☀️</span>
+                <div>
+                  <div style="font-size:10px;font-weight:600;color:#fff;">2026 оны 4-р сар 30</div>
+                  <div style="font-size:9px;color:rgba(255,255,255,0.6);">Лхагва гараг</div>
+                </div>
+                <div style="flex:1;"></div>
+                <div style="font-size:9px;color:rgba(255,255,255,0.6);">Улаанбаатар</div>
+                <div style="background:rgba(255,255,255,0.2);border-radius:8px;padding:4px 8px;display:flex;align-items:center;gap:3px;">
+                  <span style="font-size:10px;">🌡️</span>
+                  <span style="font-size:10px;font-weight:600;color:#fff;">UB</span>
+                </div>
+              </div>
+            </div>
+            <!-- Feed -->
+            <div class="scroll scroll-pb" style="padding:10px 12px;">
+              <div class="app-section">Шинэ зарлалууд</div>
+              <!-- Card 1 -->
+              <div class="card" style="border-left:3px solid #3B82F6;">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+                  <div style="display:flex;gap:9px;align-items:center;">
+                    <div class="logo-box lb36" style="background:linear-gradient(135deg,#0E7490,#06B6D4);">🏢</div>
+                    <div><div style="font-size:11px;font-weight:700;color:var(--txt);">HiTech Solutions</div><div style="font-size:9px;color:var(--mu);">Улаанбаатар · IT</div></div>
+                  </div>
+                  <span class="tag tag-g">Нээлттэй</span>
+                </div>
+                <div style="font-size:12px;font-weight:700;color:var(--txt);margin-bottom:4px;">Frontend Developer Intern</div>
+                <div style="font-size:9.5px;color:var(--mu);line-height:1.5;margin-bottom:8px;">React, TypeScript ашиглан веб апп хөгжүүлэх. 3 сарын хугацаатай.</div>
+                <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;">
+                  <span class="tag tag-p">React</span><span class="tag tag-p">TypeScript</span><span class="tag tag-m">3 сар</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <span style="font-size:9px;color:var(--mu);">👥 12 өргөдөл</span>
+                  <div style="background:var(--p);color:#fff;border-radius:8px;padding:5px 12px;font-size:9.5px;font-weight:600;">Өргөдөл →</div>
+                </div>
+              </div>
+              <!-- Card 2 -->
+              <div class="card" style="border-left:3px solid var(--pu);">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+                  <div style="display:flex;gap:9px;align-items:center;">
+                    <div class="logo-box lb36" style="background:linear-gradient(135deg,#7C3AED,#4C1D95);">📊</div>
+                    <div><div style="font-size:11px;font-weight:700;">Golomt Bank</div><div style="font-size:9px;color:var(--mu);">Улаанбаатар · Санхүү</div></div>
+                  </div>
+                  <span class="tag tag-a">Хязгаартай</span>
+                </div>
+                <div style="font-size:12px;font-weight:700;margin-bottom:4px;">Data Analyst Intern</div>
+                <div style="display:flex;gap:4px;margin-top:6px;"><span class="tag tag-p">Python</span><span class="tag tag-p">SQL</span><span class="tag tag-m">4 сар</span></div>
+              </div>
+            </div>
+            <!-- Nav -->
+            <div class="nav">
+              <div class="nav-item nav-pill"><span class="ni-icon">🏠</span><span class="ni-label on">Нүүр</span></div>
+              <div class="nav-item"><span class="ni-icon">📋</span><span class="ni-label">Дадлага</span></div>
+              <div class="nav-item"><span class="ni-icon">📅</span><span class="ni-label">Хуваарь</span></div>
+              <div class="nav-item"><span class="ni-icon">👤</span><span class="ni-label">Профайл</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="screen-label"><strong>06 — Оюутан нүүр</strong>Student Home</div>
+    </div>
+
+    <!-- Company Home -->
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="island"></div>
+          <div style="position:absolute;inset:0;background:var(--bg);display:flex;flex-direction:column;">
+            <div class="gh-teal" style="padding:0 16px 18px;border-radius:0 0 26px 26px;flex-shrink:0;position:relative;overflow:hidden;">
+              <div class="orb" style="width:100px;height:100px;top:-20px;right:10px;"></div>
+              <div class="sb" style="color:#fff;"><span class="sb-time">9:41</span><div class="battery" style="color:#fff;"><div class="batt-body"><div class="batt-fill"></div></div></div></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+                <div>
+                  <div style="font-size:10px;color:rgba(255,255,255,0.6);">Өглөөний мэнд</div>
+                  <div style="font-size:17px;font-weight:800;color:#fff;">HiTech Solutions</div>
+                </div>
+                <div style="display:flex;gap:7px;">
+                  <div style="width:34px;height:34px;background:rgba(255,255,255,0.16);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:15px;">🔔</div>
+                  <div style="width:34px;height:34px;background:rgba(255,255,255,0.16);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:15px;">➕</div>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;">
+                <div style="background:rgba(255,255,255,0.15);border-radius:11px;padding:10px 6px;text-align:center;">
+                  <div style="font-size:20px;font-weight:800;color:#fff;line-height:1;">3</div>
+                  <div style="font-size:8.5px;color:rgba(255,255,255,0.7);margin-top:2px;">Зарлал</div>
+                </div>
+                <div style="background:rgba(255,255,255,0.15);border-radius:11px;padding:10px 6px;text-align:center;">
+                  <div style="font-size:20px;font-weight:800;color:#fff;line-height:1;">24</div>
+                  <div style="font-size:8.5px;color:rgba(255,255,255,0.7);margin-top:2px;">Өргөдөл</div>
+                </div>
+                <div style="background:rgba(255,255,255,0.15);border-radius:11px;padding:10px 6px;text-align:center;">
+                  <div style="font-size:20px;font-weight:800;color:#fff;line-height:1;">5</div>
+                  <div style="font-size:8.5px;color:rgba(255,255,255,0.7);margin-top:2px;">Идэвхтэй</div>
+                </div>
+              </div>
+            </div>
+            <div class="scroll scroll-pb" style="padding:10px 12px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <div class="app-section" style="margin:0;">Миний зарлалууд</div>
+                <div style="background:var(--t);color:#fff;border-radius:8px;padding:4px 10px;font-size:9.5px;font-weight:600;">+ Шинэ</div>
+              </div>
+              <div class="card card-sm">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                  <div style="font-size:11px;font-weight:700;">Frontend Developer Intern</div>
+                  <span class="tag tag-g" style="font-size:8px;">Идэвхтэй</span>
+                </div>
+                <div style="font-size:9px;color:var(--mu);margin-bottom:6px;">React · TypeScript · 3 сар</div>
+                <div style="display:flex;justify-content:space-between;"><span style="font-size:9px;color:var(--mu);">👥 12 өргөдөл</span><span style="font-size:9px;color:var(--t);font-weight:600;">Харах →</span></div>
+              </div>
+              <div class="card card-sm">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                  <div style="font-size:11px;font-weight:700;">Backend Node.js Intern</div>
+                  <span class="tag tag-g" style="font-size:8px;">Идэвхтэй</span>
+                </div>
+                <div style="font-size:9px;color:var(--mu);margin-bottom:6px;">Node.js · PostgreSQL · 6 сар</div>
+                <div style="display:flex;justify-content:space-between;"><span style="font-size:9px;color:var(--mu);">👥 8 өргөдөл</span><span style="font-size:9px;color:var(--t);font-weight:600;">Харах →</span></div>
+              </div>
+              <div class="card card-sm" style="opacity:0.75;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                  <div style="font-size:11px;font-weight:700;">Mobile Flutter Intern</div>
+                  <span class="tag tag-r" style="font-size:8px;">Хаагдсан</span>
+                </div>
+                <div style="font-size:9px;color:var(--mu);">Flutter · Dart · 4 сар · 4 өргөдөл</div>
+              </div>
+            </div>
+            <div class="nav" style="--p:var(--t);">
+              <div class="nav-item" style="background:rgba(14,116,144,0.1);border-radius:14px;padding:4px 12px;"><span class="ni-icon">🏠</span><span class="ni-label" style="color:var(--t);font-weight:700;">Нүүр</span></div>
+              <div class="nav-item"><span class="ni-icon">👥</span><span class="ni-label">Дадлагчид</span></div>
+              <div class="nav-item"><span class="ni-icon">👤</span><span class="ni-label">Профайл</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="screen-label"><strong>07 — Компани нүүр</strong>Company Home</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════ INTERNSHIP ══════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-dot" style="background:linear-gradient(135deg,#F59E0B,#D97706);box-shadow:0 0 12px rgba(245,158,11,0.5);"></div>
+    <h2 style="color:#F59E0B;">Internship Screens</h2>
+    <div class="section-line" style="background:linear-gradient(90deg,rgba(245,158,11,0.3),transparent);"></div>
+  </div>
+
+  <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(270px,1fr));">
+
+    <!-- Internship list -->
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="island"></div>
+          <div style="position:absolute;inset:0;background:var(--bg);display:flex;flex-direction:column;">
+            <div class="gh-indigo" style="padding:0 16px 16px;border-radius:0 0 24px 24px;flex-shrink:0;">
+              <div class="sb" style="color:#fff;"><span class="sb-time">9:41</span><div class="battery" style="color:#fff;"><div class="batt-body"><div class="batt-fill"></div></div></div></div>
+              <div style="font-size:17px;font-weight:800;color:#fff;margin-bottom:3px;">Дадлага</div>
+              <div style="font-size:10px;color:rgba(255,255,255,0.6);margin-bottom:10px;">Зарлалуудыг хайж олоорой</div>
+              <div style="background:rgba(255,255,255,0.16);border-radius:11px;padding:9px 12px;display:flex;align-items:center;gap:8px;">
+                <span style="font-size:13px;opacity:0.7;">🔍</span>
+                <span style="font-size:11px;color:rgba(255,255,255,0.55);">Хайх... компани, мэргэжил</span>
+              </div>
+            </div>
+            <!-- Tabs -->
+            <div style="display:flex;background:#fff;border-bottom:1px solid var(--bd);">
+              <div style="flex:1;padding:9px 6px;text-align:center;font-size:10px;font-weight:700;color:var(--p);border-bottom:2px solid var(--p);">Бүх зарлал</div>
+              <div style="flex:1;padding:9px 6px;text-align:center;font-size:10px;color:var(--mu);">Өргөдлүүд</div>
+              <div style="flex:1;padding:9px 6px;text-align:center;font-size:10px;color:var(--mu);">Идэвхтэй</div>
+            </div>
+            <div class="scroll scroll-pb" style="padding:10px 12px;">
+              <div class="card" style="border-left:3px solid var(--p);">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:7px;">
+                  <div style="display:flex;gap:9px;align-items:center;">
+                    <div class="logo-box lb36" style="background:linear-gradient(135deg,#0E7490,#06B6D4);">🏢</div>
+                    <div><div style="font-size:11px;font-weight:700;">HiTech Solutions</div><div style="font-size:9px;color:var(--mu);">IT · Улаанбаатар</div></div>
+                  </div>
+                  <span class="tag tag-g">Нээлттэй</span>
+                </div>
+                <div style="font-size:12px;font-weight:700;margin-bottom:4px;">Frontend Developer Intern</div>
+                <div style="font-size:9.5px;color:var(--mu);line-height:1.5;margin-bottom:7px;">React болон TypeScript ашиглан веб апп хөгжүүлэх. Менторийн удирдлаган дор ажиллана.</div>
+                <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;"><span class="tag tag-p">React</span><span class="tag tag-p">TypeScript</span><span class="tag tag-m">3 сар</span><span class="tag tag-g">Цалинтай</span></div>
+                <button class="btn btn-p" style="font-size:10px;padding:8px;">Өргөдөл гаргах</button>
+              </div>
+              <div class="card">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:7px;">
+                  <div style="display:flex;gap:9px;align-items:center;">
+                    <div class="logo-box lb36" style="background:linear-gradient(135deg,#16A34A,#15803D);">🌱</div>
+                    <div><div style="font-size:11px;font-weight:700;">Mobicom Corp</div><div style="font-size:9px;color:var(--mu);">Харилцаа холбоо</div></div>
+                  </div>
+                  <span class="tag tag-g">Нээлттэй</span>
+                </div>
+                <div style="font-size:12px;font-weight:700;margin-bottom:4px;">Network Engineer Intern</div>
+                <div style="display:flex;gap:4px;"><span class="tag tag-m">Cisco</span><span class="tag tag-m">Linux</span><span class="tag tag-m">4 сар</span></div>
+              </div>
+            </div>
+            <div class="nav">
+              <div class="nav-item"><span class="ni-icon">🏠</span><span class="ni-label">Нүүр</span></div>
+              <div class="nav-item nav-pill"><span class="ni-icon">📋</span><span class="ni-label on">Дадлага</span></div>
+              <div class="nav-item"><span class="ni-icon">📅</span><span class="ni-label">Хуваарь</span></div>
+              <div class="nav-item"><span class="ni-icon">👤</span><span class="ni-label">Профайл</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="screen-label"><strong>08 — Дадлага жагсаалт</strong>Internship List</div>
+    </div>
+
+    <!-- Swipe screen -->
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="island"></div>
+          <div style="position:absolute;inset:0;background:var(--bg);display:flex;flex-direction:column;">
+            <div class="gh-indigo" style="padding:0 16px 14px;border-radius:0 0 22px 22px;flex-shrink:0;">
+              <div class="sb" style="color:#fff;"><span class="sb-time">9:41</span><div class="battery" style="color:#fff;"><div class="batt-body"><div class="batt-fill"></div></div></div></div>
+              <div style="font-size:15px;font-weight:800;color:#fff;margin-bottom:2px;">Зарлал хайх</div>
+              <div style="font-size:9px;color:rgba(255,255,255,0.55);">Таалагдвал дараагийн → үгүй бол ←</div>
+            </div>
+            <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:10px 14px;padding-bottom:68px;">
+              <!-- Swipe card -->
+              <div style="width:100%;background:#fff;border-radius:20px;box-shadow:0 8px 32px rgba(55,48,163,0.12);border:1px solid var(--bd);overflow:hidden;">
+                <div class="gh-teal" style="padding:18px;text-align:center;">
+                  <div style="font-size:36px;margin-bottom:6px;">🏢</div>
+                  <div style="font-size:15px;font-weight:800;color:#fff;margin-bottom:2px;">HiTech Solutions</div>
+                  <div style="font-size:9px;color:rgba(255,255,255,0.7);">Мэдээлэл технологи · Улаанбаатар</div>
+                </div>
+                <div style="padding:12px 14px;">
+                  <div style="font-size:13px;font-weight:700;margin-bottom:5px;">Frontend Developer Intern</div>
+                  <div style="font-size:10px;color:var(--mu);line-height:1.6;margin-bottom:10px;">React болон TypeScript ашиглан веб апп хөгжүүлэх. Менторийн удирдлаган дор бодит төсөл дээр ажиллах.</div>
+                  <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px;"><span class="tag tag-p">React</span><span class="tag tag-p">TypeScript</span><span class="tag tag-m">3 сар</span><span class="tag tag-g">Цалинтай</span></div>
+                  <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--mu);margin-bottom:12px;">
+                    <span>📅 2025.06.01 эхлэх</span><span>👥 5 оюутан авна</span>
+                  </div>
+                  <div style="display:flex;gap:10px;">
+                    <div style="flex:1;height:42px;background:var(--rl);border:1.5px solid var(--r);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;">✗</div>
+                    <div style="flex:1;height:42px;background:var(--gl);border:1.5px solid var(--g);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;">✓</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="nav">
+              <div class="nav-item"><span class="ni-icon">🏠</span><span class="ni-label">Нүүр</span></div>
+              <div class="nav-item nav-pill"><span class="ni-icon">📋</span><span class="ni-label on">Дадлага</span></div>
+              <div class="nav-item"><span class="ni-icon">📅</span><span class="ni-label">Хуваарь</span></div>
+              <div class="nav-item"><span class="ni-icon">👤</span><span class="ni-label">Профайл</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="screen-label"><strong>09 — Swipe дэлгэц</strong>Swipe Screen</div>
+    </div>
+
+    <!-- Company Interns -->
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="island"></div>
+          <div style="position:absolute;inset:0;background:var(--bg);display:flex;flex-direction:column;">
+            <div class="gh-teal" style="padding:0 16px 14px;border-radius:0 0 24px 24px;flex-shrink:0;">
+              <div class="sb" style="color:#fff;"><span class="sb-time">9:41</span><div class="battery" style="color:#fff;"><div class="batt-body"><div class="batt-fill"></div></div></div></div>
+              <div style="font-size:17px;font-weight:800;color:#fff;margin-bottom:2px;">Дадлагчид</div>
+              <div style="font-size:10px;color:rgba(255,255,255,0.6);">Өргөдөл болон идэвхтэй дадлагчид</div>
+            </div>
+            <div style="display:flex;background:#fff;border-bottom:1px solid var(--bd);">
+              <div style="flex:1;padding:9px 6px;text-align:center;font-size:10px;font-weight:700;color:var(--t);border-bottom:2px solid var(--t);">Өргөдлүүд</div>
+              <div style="flex:1;padding:9px 6px;text-align:center;font-size:10px;color:var(--mu);">Идэвхтэй</div>
+              <div style="flex:1;padding:9px 6px;text-align:center;font-size:10px;color:var(--mu);">Дууссан</div>
+            </div>
+            <div class="scroll scroll-pb" style="padding:10px 12px;">
+              <!-- Applicant -->
+              <div class="card card-sm" style="display:flex;gap:10px;align-items:center;">
+                <div class="av av36" style="background:linear-gradient(135deg,#3730A3,#6366F1);">М</div>
+                <div style="flex:1;">
+                  <div style="font-size:11px;font-weight:700;">М. Мөнхбат</div>
+                  <div style="font-size:9px;color:var(--mu);">Сити ИС · Програм хангамж</div>
+                  <div style="display:flex;gap:4px;margin-top:4px;"><span class="tag tag-p" style="font-size:8px;">React</span><span class="tag tag-p" style="font-size:8px;">Flutter</span></div>
+                </div>
+                <span class="tag tag-a">Хүлээгдэж буй</span>
+              </div>
+              <div class="card card-sm" style="display:flex;gap:10px;align-items:center;">
+                <div class="av av36" style="background:linear-gradient(135deg,#16A34A,#15803D);">Б</div>
+                <div style="flex:1;">
+                  <div style="font-size:11px;font-weight:700;">Б. Болормаа</div>
+                  <div style="font-size:9px;color:var(--mu);">МУИС · Математик</div>
+                  <div style="display:flex;gap:4px;margin-top:4px;"><span class="tag tag-p" style="font-size:8px;">Python</span><span class="tag tag-p" style="font-size:8px;">SQL</span></div>
+                </div>
+                <span class="tag tag-g">Зөвшөөрсөн</span>
+              </div>
+              <div class="card card-sm" style="display:flex;gap:10px;align-items:center;opacity:0.8;">
+                <div class="av av36" style="background:linear-gradient(135deg,#DC2626,#B91C1C);">Э</div>
+                <div style="flex:1;">
+                  <div style="font-size:11px;font-weight:700;">Э. Энхбаяр</div>
+                  <div style="font-size:9px;color:var(--mu);">ШУТИС · Компьютер</div>
+                </div>
+                <span class="tag tag-r">Татгалзсан</span>
+              </div>
+              <div class="card card-sm" style="display:flex;gap:10px;align-items:center;">
+                <div class="av av36" style="background:linear-gradient(135deg,#0E7490,#06B6D4);">Д</div>
+                <div style="flex:1;">
+                  <div style="font-size:11px;font-weight:700;">Д. Дарьсүрэн</div>
+                  <div style="font-size:9px;color:var(--mu);">Сити ИС · Финтек</div>
+                </div>
+                <span class="tag tag-a">Хүлээгдэж буй</span>
+              </div>
+            </div>
+            <div class="nav">
+              <div class="nav-item"><span class="ni-icon">🏠</span><span class="ni-label">Нүүр</span></div>
+              <div class="nav-item" style="background:rgba(14,116,144,0.1);border-radius:14px;padding:4px 10px;"><span class="ni-icon">👥</span><span class="ni-label" style="color:var(--t);font-weight:700;">Дадлагчид</span></div>
+              <div class="nav-item"><span class="ni-icon">👤</span><span class="ni-label">Профайл</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="screen-label"><strong>10 — Дадлагчид</strong>Company Interns</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════ PROFILE ══════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-dot" style="background:linear-gradient(135deg,#F472B6,#EC4899);box-shadow:0 0 12px rgba(236,72,153,0.5);"></div>
+    <h2 style="color:#F472B6;">Profile Screens</h2>
+    <div class="section-line" style="background:linear-gradient(90deg,rgba(244,114,182,0.3),transparent);"></div>
+  </div>
+
+  <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(270px,1fr));">
+
+    <!-- Student Profile -->
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="island"></div>
+          <div style="position:absolute;inset:0;background:var(--bg);display:flex;flex-direction:column;">
+            <div class="gh-indigo" style="padding:0 16px 20px;border-radius:0 0 30px 30px;flex-shrink:0;position:relative;overflow:hidden;">
+              <div class="orb" style="width:100px;height:100px;top:-20px;right:-10px;"></div>
+              <div class="sb" style="color:#fff;"><span class="sb-time">9:41</span><div class="battery" style="color:#fff;"><div class="batt-body"><div class="batt-fill"></div></div></div></div>
+              <div style="text-align:center;">
+                <div style="position:relative;display:inline-block;margin-bottom:8px;">
+                  <div class="av av48" style="background:linear-gradient(135deg,#6366F1,#8B5CF6);border:2.5px solid rgba(255,255,255,0.35);font-size:20px;margin:0 auto;">М</div>
+                  <div style="position:absolute;bottom:-1px;right:-3px;width:18px;height:18px;background:var(--g);border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;">✎</div>
+                </div>
+                <div style="font-size:17px;font-weight:800;color:#fff;letter-spacing:-0.4px;margin-bottom:2px;">М. Мөнхбат</div>
+                <div style="font-size:9.5px;color:rgba(255,255,255,0.65);margin-bottom:10px;">Сити Их Сургууль · Програм хангамж</div>
+                <div style="display:flex;gap:6px;justify-content:center;">
+                  <span class="chip" style="font-size:8.5px;">🎓 4-р курс</span>
+                  <span class="chip" style="font-size:8.5px;">📞 +976 88330925</span>
+                </div>
+              </div>
+            </div>
+            <div class="scroll scroll-pb" style="padding:10px 12px;">
+              <div class="card card-sm">
+                <div style="font-size:10px;font-weight:700;color:var(--p);margin-bottom:7px;">📋 Бүртгэлийн мэдээлэл</div>
+                <div style="display:flex;flex-direction:column;gap:5px;">
+                  <div style="display:flex;justify-content:space-between;font-size:9.5px;"><span style="color:var(--mu);">Мэргэжил</span><span style="font-weight:600;">Програм хангамж</span></div>
+                  <div style="height:1px;background:var(--bd);"></div>
+                  <div style="display:flex;justify-content:space-between;font-size:9.5px;"><span style="color:var(--mu);">Утас</span><span style="font-weight:600;">+976 88330925</span></div>
+                  <div style="height:1px;background:var(--bd);"></div>
+                  <div style="display:flex;justify-content:space-between;font-size:9.5px;"><span style="color:var(--mu);">Төрсөн огноо</span><span style="font-weight:600;">2002.09.25</span></div>
+                  <div style="height:1px;background:var(--bd);"></div>
+                  <div style="display:flex;justify-content:space-between;font-size:9.5px;"><span style="color:var(--mu);">Улс</span><span style="font-weight:600;">Монгол</span></div>
+                </div>
+              </div>
+              <div class="card card-sm">
+                <div style="font-size:10px;font-weight:700;color:var(--p);margin-bottom:7px;">🛠 Ур чадвар</div>
+                <div style="display:flex;gap:4px;flex-wrap:wrap;"><span class="tag tag-p">Flutter</span><span class="tag tag-p">Node.js</span><span class="tag tag-p">PostgreSQL</span><span class="tag tag-p">React</span><span class="tag tag-m">Git</span></div>
+              </div>
+              <div style="display:flex;gap:8px;">
+                <div style="flex:1;background:var(--pl);border-radius:10px;padding:9px;text-align:center;font-size:10px;font-weight:600;color:var(--p);">✎ Засах</div>
+                <div style="flex:1;background:var(--pl);border-radius:10px;padding:9px;text-align:center;font-size:10px;font-weight:600;color:var(--p);">📄 CV</div>
+              </div>
+            </div>
+            <div class="nav">
+              <div class="nav-item"><span class="ni-icon">🏠</span><span class="ni-label">Нүүр</span></div>
+              <div class="nav-item"><span class="ni-icon">📋</span><span class="ni-label">Дадлага</span></div>
+              <div class="nav-item"><span class="ni-icon">📅</span><span class="ni-label">Хуваарь</span></div>
+              <div class="nav-item nav-pill"><span class="ni-icon">👤</span><span class="ni-label on">Профайл</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="screen-label"><strong>11 — Профайл (Оюутан)</strong>Student Profile</div>
+    </div>
+
+    <!-- Edit profile bottom sheet -->
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="island"></div>
+          <!-- Dimmed background -->
+          <div style="position:absolute;inset:0;background:linear-gradient(160deg,#1E1B5E,#3730A3,#6366F1);opacity:0.4;"></div>
+          <div style="position:absolute;inset:0;background:rgba(0,0,0,0.45);"></div>
+          <!-- Sheet -->
+          <div style="position:absolute;bottom:0;left:0;right:0;background:#fff;border-radius:24px 24px 0 0;padding:14px 18px 20px;box-shadow:0 -8px 32px rgba(0,0,0,0.2);">
+            <div class="handle"></div>
+            <div style="font-size:15px;font-weight:800;color:var(--txt);margin-bottom:14px;">Профайл засах</div>
+            <!-- Avatar -->
+            <div style="text-align:center;margin-bottom:12px;">
+              <div style="position:relative;display:inline-block;">
+                <div class="av av48" style="background:linear-gradient(135deg,#3730A3,#6366F1);margin:0 auto 5px;">М</div>
+                <div style="position:absolute;bottom:3px;right:-3px;width:20px;height:20px;background:var(--p);border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;">📷</div>
+              </div>
+              <div style="font-size:10px;color:var(--p);font-weight:500;">Зураг солих</div>
+            </div>
+            <div class="fl" style="margin-top:0;">Нэр</div>
+            <div class="inp-wrap"><span class="inp-ico">👤</span><div class="inp">Мөнхбат</div></div>
+            <div class="fl">Овог</div>
+            <div class="inp-wrap"><span class="inp-ico">👤</span><div class="inp">М</div></div>
+            <div class="fl">Утасны дугаар</div>
+            <div class="inp-wrap"><span class="inp-ico">📞</span><div class="inp">+976 88330925</div></div>
+            <div style="margin-top:14px;"><button class="btn btn-p" style="font-size:12px;padding:11px;">Хадгалах</button></div>
+          </div>
+        </div>
+      </div>
+      <div class="screen-label"><strong>12 — Профайл засах</strong>Edit Profile Sheet</div>
+    </div>
+
+    <!-- Company Profile -->
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="island"></div>
+          <div style="position:absolute;inset:0;background:var(--bg);display:flex;flex-direction:column;">
+            <div class="gh-teal" style="padding:0 16px 20px;border-radius:0 0 30px 30px;flex-shrink:0;position:relative;overflow:hidden;">
+              <div class="orb" style="width:90px;height:90px;top:-15px;right:0;"></div>
+              <div class="sb" style="color:#fff;"><span class="sb-time">9:41</span><div class="battery" style="color:#fff;"><div class="batt-body"><div class="batt-fill"></div></div></div></div>
+              <div style="text-align:center;">
+                <div style="width:54px;height:54px;background:rgba(255,255,255,0.18);border:2px solid rgba(255,255,255,0.3);border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 8px;">🏢</div>
+                <div style="font-size:17px;font-weight:800;color:#fff;margin-bottom:2px;">HiTech Solutions</div>
+                <div style="font-size:9.5px;color:rgba(255,255,255,0.65);margin-bottom:10px;">Мэдээлэл технологи · Улаанбаатар</div>
+                <div style="display:flex;gap:6px;justify-content:center;">
+                  <span class="chip" style="font-size:8px;">📧 hr@hitech.mn</span>
+                  <span class="chip" style="font-size:8px;">📞 7711 0000</span>
+                </div>
+              </div>
+            </div>
+            <div class="scroll scroll-pb" style="padding:10px 12px;">
+              <div class="card card-sm">
+                <div style="font-size:10px;font-weight:700;color:var(--t);margin-bottom:7px;">ℹ️ Байгууллагын мэдээлэл</div>
+                <div style="display:flex;flex-direction:column;gap:5px;">
+                  <div style="display:flex;justify-content:space-between;font-size:9.5px;"><span style="color:var(--mu);">Чиглэл</span><span style="font-weight:600;">Мэдээлэл технологи</span></div>
+                  <div style="height:1px;background:var(--bd);"></div>
+                  <div style="display:flex;justify-content:space-between;font-size:9.5px;"><span style="color:var(--mu);">Хаяг</span><span style="font-weight:600;">Сүхбаатар дүүрэг</span></div>
+                  <div style="height:1px;background:var(--bd);"></div>
+                  <div style="display:flex;justify-content:space-between;font-size:9.5px;"><span style="color:var(--mu);">Ажилтан</span><span style="font-weight:600;">50–100</span></div>
+                </div>
+              </div>
+              <div class="card card-sm">
+                <div style="font-size:10px;font-weight:700;color:var(--t);margin-bottom:8px;">📊 Статистик</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">
+                  <div style="text-align:center;padding:8px;background:var(--tl);border-radius:10px;"><div style="font-size:17px;font-weight:800;color:var(--t);">3</div><div style="font-size:8px;color:var(--mu);">Зарлал</div></div>
+                  <div style="text-align:center;padding:8px;background:var(--gl);border-radius:10px;"><div style="font-size:17px;font-weight:800;color:var(--g);">5</div><div style="font-size:8px;color:var(--mu);">Идэвхтэй</div></div>
+                  <div style="text-align:center;padding:8px;background:var(--al);border-radius:10px;"><div style="font-size:17px;font-weight:800;color:#92400E;">24</div><div style="font-size:8px;color:var(--mu);">Өргөдөл</div></div>
+                </div>
+              </div>
+              <button class="btn btn-r" style="font-size:11px;padding:10px;">🚪 Системээс гарах</button>
+            </div>
+            <div class="nav">
+              <div class="nav-item"><span class="ni-icon">🏠</span><span class="ni-label">Нүүр</span></div>
+              <div class="nav-item"><span class="ni-icon">👥</span><span class="ni-label">Дадлагчид</span></div>
+              <div class="nav-item" style="background:rgba(14,116,144,0.1);border-radius:14px;padding:4px 12px;"><span class="ni-icon">👤</span><span class="ni-label" style="color:var(--t);font-weight:700;">Профайл</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="screen-label"><strong>13 — Профайл (Компани)</strong>Company Profile</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════ UTILITY ══════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-dot" style="background:linear-gradient(135deg,#34D399,#10B981);box-shadow:0 0 12px rgba(52,211,153,0.5);"></div>
+    <h2 style="color:#34D399;">Utility Screens</h2>
+    <div class="section-line" style="background:linear-gradient(90deg,rgba(52,211,153,0.3),transparent);"></div>
+  </div>
+
+  <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(270px,1fr));">
+
+    <!-- Schedule -->
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="island"></div>
+          <div style="position:absolute;inset:0;background:var(--bg);display:flex;flex-direction:column;">
+            <div style="background:#fff;border-bottom:1px solid var(--bd);padding:0 16px 10px;flex-shrink:0;">
+              <div class="sb" style="color:var(--txt);"><span class="sb-time" style="color:var(--txt);">9:41</span><div class="battery"><div class="batt-body" style="border-color:var(--txt);"><div class="batt-fill" style="background:var(--txt);"></div></div></div></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div style="font-size:16px;font-weight:800;">Хичээлийн хуваарь</div>
+                <div style="background:var(--pl);color:var(--p);border-radius:8px;padding:5px 10px;font-size:9.5px;font-weight:600;">+ Нэмэх</div>
+              </div>
+            </div>
+            <!-- Day selector -->
+            <div style="background:#fff;padding:8px 10px;display:flex;gap:3px;border-bottom:1px solid var(--bd);flex-shrink:0;">
+              <div style="flex:1;padding:6px 3px;text-align:center;font-size:9px;font-weight:500;color:var(--mu);">Да</div>
+              <div style="flex:1;padding:6px 3px;text-align:center;font-size:9px;font-weight:500;color:var(--mu);">Мя</div>
+              <div style="flex:1;padding:6px 8px;text-align:center;font-size:9px;font-weight:700;background:var(--p);color:#fff;border-radius:10px;">Лх</div>
+              <div style="flex:1;padding:6px 3px;text-align:center;font-size:9px;font-weight:500;color:var(--mu);">Пү</div>
+              <div style="flex:1;padding:6px 3px;text-align:center;font-size:9px;font-weight:500;color:var(--mu);">Ба</div>
+              <div style="flex:1;padding:6px 3px;text-align:center;font-size:9px;font-weight:500;color:var(--mu);">Бя</div>
+              <div style="flex:1;padding:6px 3px;text-align:center;font-size:9px;font-weight:500;color:var(--mu);">Ня</div>
+            </div>
+            <div class="scroll scroll-pb" style="padding:10px 12px;">
+              <!-- Time slot -->
+              <div style="display:flex;gap:10px;margin-bottom:10px;">
+                <div style="width:36px;flex-shrink:0;text-align:right;">
+                  <div style="font-size:9px;font-weight:700;color:var(--txt);">08:00</div>
+                  <div style="width:1px;height:34px;background:var(--bd);margin:3px auto;"></div>
+                  <div style="font-size:9px;font-weight:700;color:var(--txt);">09:40</div>
+                </div>
+                <div style="flex:1;background:#fff;border-radius:12px;border-left:3px solid var(--p);padding:10px 11px;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+                  <div style="font-size:11px;font-weight:700;margin-bottom:3px;">Алгоритм ба өгөгдлийн бүтэц</div>
+                  <div style="font-size:9px;color:var(--mu);">А-304 · Проф. Ганбаатар</div>
+                </div>
+              </div>
+              <div style="display:flex;gap:10px;margin-bottom:10px;">
+                <div style="width:36px;flex-shrink:0;text-align:right;">
+                  <div style="font-size:9px;font-weight:700;color:var(--txt);">10:00</div>
+                  <div style="width:1px;height:34px;background:var(--bd);margin:3px auto;"></div>
+                  <div style="font-size:9px;font-weight:700;color:var(--txt);">11:40</div>
+                </div>
+                <div style="flex:1;background:#fff;border-radius:12px;border-left:3px solid var(--g);padding:10px 11px;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+                  <div style="font-size:11px;font-weight:700;margin-bottom:3px;">Мэдээллийн систем</div>
+                  <div style="font-size:9px;color:var(--mu);">Б-201 · Багш Нямаа</div>
+                </div>
+              </div>
+              <div style="display:flex;gap:10px;">
+                <div style="width:36px;flex-shrink:0;text-align:right;">
+                  <div style="font-size:9px;font-weight:700;color:var(--txt);">13:00</div>
+                  <div style="width:1px;height:34px;background:var(--bd);margin:3px auto;"></div>
+                  <div style="font-size:9px;font-weight:700;color:var(--txt);">14:40</div>
+                </div>
+                <div style="flex:1;background:#fff;border-radius:12px;border-left:3px solid var(--a);padding:10px 11px;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+                  <div style="font-size:11px;font-weight:700;margin-bottom:3px;">Програм хангамжийн инженерчлэл</div>
+                  <div style="font-size:9px;color:var(--mu);">В-102 · Проф. Азбаяр</div>
+                </div>
+              </div>
+            </div>
+            <div class="nav">
+              <div class="nav-item"><span class="ni-icon">🏠</span><span class="ni-label">Нүүр</span></div>
+              <div class="nav-item"><span class="ni-icon">📋</span><span class="ni-label">Дадлага</span></div>
+              <div class="nav-item nav-pill"><span class="ni-icon">📅</span><span class="ni-label on">Хуваарь</span></div>
+              <div class="nav-item"><span class="ni-icon">👤</span><span class="ni-label">Профайл</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="screen-label"><strong>14 — Хичээлийн хуваарь</strong>Schedule Screen</div>
+    </div>
+
+    <!-- Diary -->
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="island"></div>
+          <div style="position:absolute;inset:0;background:var(--bg);display:flex;flex-direction:column;">
+            <div style="background:#fff;border-bottom:1px solid var(--bd);padding:0 16px 10px;flex-shrink:0;">
+              <div class="sb" style="color:var(--txt);"><span style="font-size:11px;color:var(--p);">← Буцах</span><div class="battery"><div class="batt-body" style="border-color:var(--txt);"><div class="batt-fill" style="background:var(--txt);"></div></div></div></div>
+              <div>
+                <div style="font-size:16px;font-weight:800;">Дадлагын тэмдэглэл</div>
+                <div style="font-size:9.5px;color:var(--mu);">HiTech Solutions · Frontend Intern</div>
+              </div>
+            </div>
+            <div class="scroll" style="padding:10px 12px;">
+              <div class="card" style="border-left:3px solid var(--p);">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+                  <div style="font-size:9.5px;font-weight:700;color:var(--p);">2025.06.12 · Лхагва</div>
+                  <span class="tag tag-g" style="font-size:7.5px;">😊 Сайн</span>
+                </div>
+                <div style="font-size:11px;font-weight:700;margin-bottom:4px;">React component судалсан</div>
+                <div style="font-size:9.5px;color:var(--mu);line-height:1.6;margin-bottom:7px;">Mentor Дулмаагаас React architecture сурлаа. Props, state, lifecycle практикаар хийлээ.</div>
+                <div style="display:flex;gap:4px;"><span class="tag tag-p" style="font-size:7.5px;">React</span><span class="tag tag-p" style="font-size:7.5px;">Component</span></div>
+              </div>
+              <div class="card" style="border-left:3px solid var(--g);">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+                  <div style="font-size:9.5px;font-weight:700;color:var(--g);">2025.06.11 · Мягмар</div>
+                  <span class="tag tag-p" style="font-size:7.5px;">🙂 Дунд</span>
+                </div>
+                <div style="font-size:11px;font-weight:700;margin-bottom:4px;">Git workflow дадлагажсан</div>
+                <div style="font-size:9.5px;color:var(--mu);line-height:1.6;">Branch strategy болон PR review процессыг практикаар хийсэн. Merge conflict шийдэх арга.</div>
+              </div>
+              <div style="background:#fff;border:1.5px dashed var(--bd);border-radius:12px;padding:14px;text-align:center;">
+                <div style="font-size:18px;margin-bottom:5px;">📝</div>
+                <div style="font-size:11px;font-weight:600;color:var(--p);">+ Шинэ тэмдэглэл</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="screen-label"><strong>15 — Өдрийн тэмдэглэл</strong>Diary Screen</div>
+    </div>
+
+    <!-- CV screen -->
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="island"></div>
+          <div style="position:absolute;inset:0;background:var(--bg);display:flex;flex-direction:column;">
+            <div class="gh-indigo" style="padding:0 16px 16px;border-radius:0 0 22px 22px;flex-shrink:0;">
+              <div class="sb" style="color:#fff;"><span style="font-size:11px;color:rgba(255,255,255,0.7);">← Буцах</span><div class="battery" style="color:#fff;"><div class="batt-body"><div class="batt-fill"></div></div></div></div>
+              <div style="font-size:17px;font-weight:800;color:#fff;margin-bottom:2px;">Миний CV</div>
+              <div style="font-size:10px;color:rgba(255,255,255,0.6);">Анкет болон намтар</div>
+            </div>
+            <div class="scroll" style="padding:10px 12px;">
+              <!-- Header card -->
+              <div class="card card-sm" style="text-align:center;padding:14px;">
+                <div class="av av48" style="background:linear-gradient(135deg,#3730A3,#6366F1);margin:0 auto 8px;font-size:20px;">М</div>
+                <div style="font-size:13px;font-weight:800;margin-bottom:2px;">М. Мөнхбат</div>
+                <div style="font-size:9.5px;color:var(--mu);margin-bottom:6px;">Програм хангамжийн инженер</div>
+                <div style="display:flex;justify-content:center;gap:8px;font-size:9px;color:var(--mu);">
+                  <span>📞 +976 88330925</span>
+                  <span>·</span>
+                  <span>✉️ munkh@example.mn</span>
+                </div>
+              </div>
+              <div class="card card-sm">
+                <div style="font-size:10px;font-weight:700;color:var(--p);margin-bottom:6px;">🎓 Боловсрол</div>
+                <div style="font-size:11px;font-weight:600;">Сити Их Сургууль</div>
+                <div style="font-size:9.5px;color:var(--mu);">Програм хангамж · 2022–2026</div>
+              </div>
+              <div class="card card-sm">
+                <div style="font-size:10px;font-weight:700;color:var(--p);margin-bottom:6px;">💼 Туршлага</div>
+                <div style="font-size:11px;font-weight:600;">HiTech Solutions — Intern</div>
+                <div style="font-size:9.5px;color:var(--mu);">2025.06 – одоо · Flutter дадлага</div>
+              </div>
+              <div class="card card-sm">
+                <div style="font-size:10px;font-weight:700;color:var(--p);margin-bottom:6px;">🛠 Ур чадвар</div>
+                <div style="display:flex;gap:4px;flex-wrap:wrap;"><span class="tag tag-p">Flutter</span><span class="tag tag-p">Node.js</span><span class="tag tag-p">React</span><span class="tag tag-p">PostgreSQL</span></div>
+              </div>
+              <button class="btn btn-p" style="font-size:11px;padding:10px;margin-top:2px;">📥 PDF татах</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="screen-label"><strong>16 — CV / Анкет</strong>CV Screen</div>
+    </div>
+
+    <!-- Review Screen -->
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="island"></div>
+          <div style="position:absolute;inset:0;background:var(--bg);display:flex;flex-direction:column;">
+            <div style="background:#fff;border-bottom:1px solid var(--bd);padding:0 16px 10px;flex-shrink:0;">
+              <div class="sb" style="color:var(--txt);"><span style="font-size:11px;color:var(--p);">← Буцах</span><div class="battery"><div class="batt-body" style="border-color:var(--txt);"><div class="batt-fill" style="background:var(--txt);"></div></div></div></div>
+              <div style="font-size:16px;font-weight:800;">Компани үнэлэх</div>
+            </div>
+            <div class="scroll" style="padding:10px 12px;">
+              <div style="background:var(--gl);border-radius:12px;padding:11px 12px;display:flex;gap:9px;align-items:center;margin-bottom:12px;">
+                <span style="font-size:20px;">✅</span>
+                <div><div style="font-size:11px;font-weight:700;color:var(--g);">Дадлага дууслаа!</div><div style="font-size:9.5px;color:var(--g);">Компанид үнэлгээ өгнө үү</div></div>
+              </div>
+              <!-- Stars -->
+              <div class="card card-sm" style="margin-bottom:6px;">
+                <div style="font-size:9.5px;color:var(--mu);margin-bottom:6px;">Ажлын орчин ба хамт олон</div>
+                <div style="display:flex;gap:3px;font-size:18px;">⭐⭐⭐⭐☆</div>
+              </div>
+              <div class="card card-sm" style="margin-bottom:6px;">
+                <div style="font-size:9.5px;color:var(--mu);margin-bottom:6px;">Менторийн дэмжлэг</div>
+                <div style="display:flex;gap:3px;font-size:18px;">⭐⭐⭐⭐⭐</div>
+              </div>
+              <div class="card card-sm" style="margin-bottom:10px;">
+                <div style="font-size:9.5px;color:var(--mu);margin-bottom:6px;">Суралцах боломж</div>
+                <div style="display:flex;gap:3px;font-size:18px;">⭐⭐⭐⭐☆</div>
+              </div>
+              <div style="font-size:10px;font-weight:700;margin-bottom:7px;">Дахин дадлага хийх уу?</div>
+              <div style="display:flex;gap:8px;margin-bottom:10px;">
+                <div style="flex:1;background:var(--p);color:#fff;border-radius:10px;padding:9px;text-align:center;font-size:11px;font-weight:600;">Тийм</div>
+                <div style="flex:1;background:#fff;border:1px solid var(--bd);color:var(--mu);border-radius:10px;padding:9px;text-align:center;font-size:11px;font-weight:600;">Үгүй</div>
+              </div>
+              <button class="btn btn-p" style="font-size:11px;padding:10px;">Үнэлгээ илгээх</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="screen-label"><strong>17 — Компани үнэлэх</strong>Review Screen</div>
+    </div>
+
+    <!-- Notifications -->
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="island"></div>
+          <div style="position:absolute;inset:0;background:var(--bg);display:flex;flex-direction:column;">
+            <div style="background:#fff;border-bottom:1px solid var(--bd);padding:0 16px 10px;flex-shrink:0;">
+              <div class="sb" style="color:var(--txt);"><span style="font-size:11px;color:var(--p);">← Буцах</span><div class="battery"><div class="batt-body" style="border-color:var(--txt);"><div class="batt-fill" style="background:var(--txt);"></div></div></div></div>
+              <div style="font-size:16px;font-weight:800;">Мэдэгдэл</div>
+            </div>
+            <div class="scroll" style="padding:10px 12px;">
+              <div style="font-size:9px;color:var(--fa);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Өнөөдөр</div>
+              <!-- Unread -->
+              <div style="background:#fff;border-radius:12px;border:1px solid rgba(99,102,241,0.2);padding:11px;margin-bottom:7px;display:flex;gap:9px;align-items:flex-start;box-shadow:0 2px 8px rgba(99,102,241,0.08);">
+                <div style="width:34px;height:34px;background:var(--gl);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">✅</div>
+                <div style="flex:1;">
+                  <div style="font-size:10.5px;font-weight:700;margin-bottom:2px;">Өргөдөл зөвшөөрөгдлөө!</div>
+                  <div style="font-size:9.5px;color:var(--mu);line-height:1.5;">HiTech Solutions-ийн Frontend Intern дадлагад зөвшөөрөгдлөө.</div>
+                  <div style="font-size:8.5px;color:var(--fa);margin-top:4px;">10 минутын өмнө</div>
+                </div>
+                <div style="width:8px;height:8px;background:var(--p);border-radius:50%;flex-shrink:0;margin-top:3px;"></div>
+              </div>
+              <div style="background:#fff;border-radius:12px;border:1px solid var(--bd);padding:11px;margin-bottom:7px;display:flex;gap:9px;align-items:flex-start;">
+                <div style="width:34px;height:34px;background:var(--pl);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">📋</div>
+                <div style="flex:1;">
+                  <div style="font-size:10.5px;font-weight:700;margin-bottom:2px;">Шинэ зарлал нэмэгдлээ</div>
+                  <div style="font-size:9.5px;color:var(--mu);line-height:1.5;">Golomt Bank Data Analyst Intern — Эрт өргөдөл гарга!</div>
+                  <div style="font-size:8.5px;color:var(--fa);margin-top:4px;">2 цагийн өмнө</div>
+                </div>
+              </div>
+              <div style="font-size:9px;color:var(--fa);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin:10px 0 8px;">Өчигдөр</div>
+              <div style="background:#fff;border-radius:12px;border:1px solid var(--bd);padding:11px;display:flex;gap:9px;align-items:flex-start;opacity:0.7;">
+                <div style="width:34px;height:34px;background:#FEF3C7;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">⏰</div>
+                <div style="flex:1;">
+                  <div style="font-size:10.5px;font-weight:700;margin-bottom:2px;">Хуваарийн сануулга</div>
+                  <div style="font-size:9.5px;color:var(--mu);">Маргааш 09:00 цагт Алгоритм хичээл байна.</div>
+                  <div style="font-size:8.5px;color:var(--fa);margin-top:4px;">Өчигдөр 18:00</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="screen-label"><strong>18 — Мэдэгдэл</strong>Notifications</div>
+    </div>
+
+    <!-- Register Company -->
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="island"></div>
+          <div style="position:absolute;inset:0;background:var(--bg);display:flex;flex-direction:column;">
+            <div class="gh-purple" style="padding:0 18px 16px;border-radius:0 0 24px 24px;flex-shrink:0;position:relative;overflow:hidden;">
+              <div class="orb" style="width:90px;height:90px;top:-20px;right:-10px;"></div>
+              <div class="sb" style="color:#fff;"><span style="font-size:11px;opacity:0.7;">← Буцах</span><span style="font-size:10px;color:rgba(255,255,255,0.6);">Компани</span></div>
+              <div style="font-size:17px;font-weight:800;color:#fff;margin-bottom:3px;">Компани бүртгэл</div>
+              <div style="font-size:10px;color:rgba(255,255,255,0.6);">Байгууллагын мэдээлэл оруулна уу</div>
+            </div>
+            <div style="flex:1;overflow:hidden;padding:12px 16px;">
+              <div class="fl" style="margin-top:0;">Компанийн нэр</div>
+              <div class="inp-wrap"><span class="inp-ico">🏢</span><div class="inp">HiTech Solutions</div></div>
+              <div class="fl">Имэйл</div>
+              <div class="inp-wrap"><span class="inp-ico">✉️</span><div class="inp">hr@hitech.mn</div></div>
+              <div class="fl">Утас</div>
+              <div class="inp-wrap"><span class="inp-ico">📞</span><div class="inp">+976 7711 0000</div></div>
+              <div class="fl">Салбар / чиглэл</div>
+              <div class="inp-wrap"><span class="inp-ico">🏷️</span><div class="inp">Мэдээлэл технологи</div></div>
+              <div class="fl">Нууц үг</div>
+              <div class="inp-wrap"><span class="inp-ico">🔒</span><div class="inp" style="color:var(--fa);">••••••••</div></div>
+              <div style="margin-top:14px;"><button class="btn btn-pu" style="font-size:12px;padding:11px;">Бүртгүүлэх</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="screen-label"><strong>19 — Компани бүртгэл</strong>Company Registration</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Footer -->
+<footer>
+  <div style="font-size:22px;margin-bottom:12px;">🎓</div>
+  <div style="font-size:16px;font-weight:700;color:#E2E8F0;margin-bottom:6px;">Оюунтан — Карьерын гарааны платформ</div>
+  <div style="font-size:12px;margin-bottom:4px;"><strong>М. Мөнхбат</strong> · Сити Их Сургууль · Азбаяр багш</div>
+  <div style="font-size:11px;">Flutter · Node.js · PostgreSQL · 2025</div>
+  <div style="margin-top:16px;font-size:11px;color:#374151;">UI Showcase — 19 дэлгэц</div>
+</footer>
+
+</body>
+</html>

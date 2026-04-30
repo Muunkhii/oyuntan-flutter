@@ -80,7 +80,7 @@ class WelcomeScreen extends StatelessWidget {
                       if (isCompany) {
                         context.go('/company/home');
                       } else {
-                        context.go('/psych-test');
+                        context.go('/home');
                       }
                     },
                   ).animate().fadeIn(delay: 650.ms).slideY(begin: 0.2, duration: 400.ms, delay: 650.ms),

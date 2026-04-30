@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import '../../theme/app_theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
-import '../messages/messages_screen.dart';
 
 class CompanyInternsScreen extends StatefulWidget {
   const CompanyInternsScreen({super.key});
@@ -727,20 +726,7 @@ class _InternDetailSheetState extends State<_InternDetailSheet>
           ])),
 
           // Bottom: message button
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border(top: BorderSide(color: AppColors.border.withValues(alpha: 0.5)))),
-            padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + 16),
-            child: _ActionBtn(
-              'Мессеж илгээх', Icons.chat_bubble_outline_rounded,
-              AppColors.primary, AppColors.primaryLight,
-              () => Navigator.push(context, MaterialPageRoute(
-                builder: (_) => ChatScreen(
-                  otherUid: d['student_id'] as String? ?? '',
-                  otherName: name,
-                  otherPhoto: photo)))),
-          ),
+          const SizedBox.shrink(),
         ]),
       ),
     );
@@ -1305,7 +1291,7 @@ class _ApplicantDetailSheetState extends State<_ApplicantDetailSheet>
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 5, vsync: this);
+    _tab = TabController(length: 4, vsync: this);
     final sid   = widget.application['student_id'] as String? ?? '';
     final appId = widget.application['id']         as String? ?? '';
     _cvFuture          = CVService().get(sid);
@@ -1366,7 +1352,7 @@ class _ApplicantDetailSheetState extends State<_ApplicantDetailSheet>
             indicatorSize: TabBarIndicatorSize.label,
             labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
             unselectedLabelStyle: const TextStyle(fontSize: 12),
-            tabs: const [Tab(text: 'Профайл'), Tab(text: 'CV'), Tab(text: 'Хуваарь'), Tab(text: 'Тест'), Tab(text: 'Шалгалт')],
+            tabs: const [Tab(text: 'Профайл'), Tab(text: 'CV'), Tab(text: 'Хуваарь'), Tab(text: 'Шалгалт')],
           ),
 
           // Content
@@ -1375,7 +1361,6 @@ class _ApplicantDetailSheetState extends State<_ApplicantDetailSheet>
               _ProfileTabContent(application: a, studentFuture: _studentFuture),
               _CvTabContent(cvFuture: _cvFuture),
               _ScheduleTabContent(scheduleFuture: _scheduleFuture),
-              _PsychTabContent(studentFuture: _studentFuture),
               _AssessmentAnswersTab(assessmentFuture: _assessmentFuture),
             ]),
           ),
@@ -1412,29 +1397,6 @@ class _ApplicantDetailSheetState extends State<_ApplicantDetailSheet>
                   padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + 16),
                   child: Column(mainAxisSize: MainAxisSize.min, children: [
                     // Message button
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          final a      = widget.application;
-                          final fn     = a['first_name'] as String? ?? '';
-                          final ln     = a['last_name']  as String? ?? '';
-                          final sname  = '$ln $fn'.trim();
-                          final sid    = a['student_id'] as String? ?? '';
-                          final sphoto = a['student_photo'] as String?;
-                          Navigator.push(context, MaterialPageRoute(
-                            builder: (_) => ChatScreen(
-                              otherUid: sid, otherName: sname, otherPhoto: sphoto)));
-                        },
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.primary,
-                          side: const BorderSide(color: AppColors.primary),
-                          padding: const EdgeInsets.symmetric(vertical: 12)),
-                        icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16),
-                        label: const Text('Мессеж илгээх', style: TextStyle(fontWeight: FontWeight.w600)),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
                     Row(children: [
                       Expanded(child: OutlinedButton.icon(
                         onPressed: () => setState(() => _showRejectInput = true),
@@ -1692,65 +1654,6 @@ class _ScheduleTabContent extends StatelessWidget {
   String _f(int h, int m) => '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}';
 }
 
-// ── Tab 4: Psych ───────────────────────────────────────────────
-class _PsychTabContent extends StatelessWidget {
-  final Future<Map<String, dynamic>?> studentFuture;
-  const _PsychTabContent({required this.studentFuture});
-
-  @override
-  Widget build(BuildContext context) => FutureBuilder<Map<String, dynamic>?>(
-    future: studentFuture,
-    builder: (_, snap) {
-      if (snap.connectionState == ConnectionState.waiting) {
-        return const Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary));
-      }
-      final psych = snap.data?['psych_profile'];
-      if (psych == null) {
-        return const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.psychology_outlined, size: 48, color: AppColors.faint),
-          SizedBox(height: 12),
-          Text('Тест өгөөгүй байна', style: TextStyle(color: AppColors.muted)),
-          SizedBox(height: 4),
-          Text('Оюутан сэтгэлзүйн тест бөглөөгүй байна',
-            style: TextStyle(fontSize: 11, color: AppColors.faint)),
-        ]));
-      }
-      final map = (psych as Map<String, dynamic>);
-      return ListView(padding: const EdgeInsets.all(16), children: [
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [
-              AppColors.primary.withValues(alpha: 0.07),
-              AppColors.purple.withValues(alpha: 0.07),
-            ]),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.primary.withValues(alpha: 0.15))),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Row(children: [
-              Icon(Icons.psychology_outlined, size: 18, color: AppColors.primary),
-              SizedBox(width: 8),
-              Text('Сэтгэлзүйн тестийн үр дүн',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-            ]),
-            const SizedBox(height: 14),
-            ...map.entries.map((e) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(e.key, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.muted)),
-                const SizedBox(height: 4),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
-                  child: Text(e.value.toString(),
-                    style: const TextStyle(fontSize: 13, color: AppColors.text))),
-              ]))),
-          ])),
-      ]);
-    },
-  );
-}
 
 // ── CV content renderer ────────────────────────────────────────
 class _CVContent extends StatelessWidget {

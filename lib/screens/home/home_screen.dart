@@ -14,10 +14,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _categoryIdx = 0;
   late Future<List<Map<String, dynamic>>> _feedFuture;
-
-  static const _categories = ['Бүх', 'IT', 'Санхүү', 'Маркетинг', 'Хэвлэл'];
 
   @override
   void initState() {
@@ -89,81 +86,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ]),
 
-                    const SizedBox(height: 18),
-
-                    // search bar
-                    Container(
-                      height: 46,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 1),
-                      ),
-                      child: Row(children: [
-                        const SizedBox(width: 14),
-                        const Icon(Icons.search_rounded, color: Colors.white70, size: 20),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: TextField(
-                            style: const TextStyle(color: Colors.white, fontSize: 13),
-                            decoration: InputDecoration(
-                              hintText: mn ? 'Дадлага хайх...' : 'Search internships...',
-                              hintStyle: const TextStyle(color: Colors.white54, fontSize: 13),
-                              border: InputBorder.none,
-                              enabledBorder: InputBorder.none,
-                              focusedBorder: InputBorder.none,
-                              isDense: true,
-                              contentPadding: EdgeInsets.zero,
-                            ),
-                          ),
-                        ),
-                        Container(
-                          margin: const EdgeInsets.all(7),
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.22),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(Icons.tune_rounded, color: Colors.white, size: 16),
-                        ),
-                      ]),
-                    ),
-
                     const SizedBox(height: 14),
 
-                    // category chips
-                    SizedBox(
-                      height: 32,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: _categories.length,
-                        separatorBuilder: (_, __) => const SizedBox(width: 8),
-                        itemBuilder: (_, i) {
-                          final on = i == _categoryIdx;
-                          return GestureDetector(
-                            onTap: () => setState(() => _categoryIdx = i),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: on ? Colors.white : Colors.white.withValues(alpha: 0.18),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: on ? Colors.transparent : Colors.white.withValues(alpha: 0.3),
-                                ),
-                              ),
-                              child: Text(
-                                _categories[i],
-                                style: TextStyle(
-                                  fontSize: 12, fontWeight: FontWeight.w600,
-                                  color: on ? AppColors.primary : Colors.white,
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
+                    // weather / date widget
+                    _WeatherBar(),
+
                   ]),
                 ),
               ),
@@ -236,6 +163,51 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ── Weather / Date Bar ─────────────────────────────────────────
+class _WeatherBar extends StatelessWidget {
+  static const _months = ['1-р сар','2-р сар','3-р сар','4-р сар','5-р сар','6-р сар','7-р сар','8-р сар','9-р сар','10-р сар','11-р сар','12-р сар'];
+  static const _days   = ['Ням','Дав','Мяг','Лха','Пүр','Баа','Бям'];
+
+  @override
+  Widget build(BuildContext context) {
+    final now     = DateTime.now();
+    final dateStr = '${now.year} оны ${_months[now.month - 1]} ${now.day}';
+    final dayStr  = _days[now.weekday % 7];
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 1),
+      ),
+      child: Row(children: [
+        const Icon(Icons.wb_sunny_outlined, color: Colors.white, size: 22),
+        const SizedBox(width: 10),
+        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(dateStr, style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w600)),
+          Text(dayStr,  style: const TextStyle(fontSize: 11, color: Colors.white70)),
+        ]),
+        const Spacer(),
+        const Text('Улаанбаатар', style: TextStyle(fontSize: 11, color: Colors.white70)),
+        const SizedBox(width: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.22),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: const Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.thermostat_outlined, color: Colors.white, size: 14),
+            SizedBox(width: 3),
+            Text('UB', style: TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w600)),
+          ]),
+        ),
+      ]),
     );
   }
 }

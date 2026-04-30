@@ -17,7 +17,6 @@ import 'screens/diary/diary_screen.dart';
 import 'screens/profile/profile_screen.dart';
 import 'screens/schedule/schedule_screen.dart';
 import 'screens/cv/cv_screen.dart';
-import 'screens/messages/messages_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -51,7 +50,6 @@ class _OyuntanAppState extends State<OyuntanApp> {
       final onAuth   = loc == '/start'             ||
                        loc.startsWith('/login')    ||
                        loc.startsWith('/register') ||
-                       loc == '/psych-test'        ||
                        loc == '/welcome';
       if (!loggedIn && !onAuth) return '/start';
       if (loggedIn && (loc == '/start' || loc.startsWith('/login'))) {
@@ -65,7 +63,6 @@ class _OyuntanAppState extends State<OyuntanApp> {
       GoRoute(path: '/login/company',    builder: (_, __) => const LoginScreen(isCompany: true)),
       GoRoute(path: '/register/student', builder: (_, __) => const RegisterStudentScreen()),
       GoRoute(path: '/register/company', builder: (_, __) => const RegisterCompanyScreen()),
-      GoRoute(path: '/psych-test',       builder: (_, __) => const PsychTestScreen()),
       GoRoute(
         path: '/welcome',
         builder: (_, state) {
@@ -83,7 +80,6 @@ class _OyuntanAppState extends State<OyuntanApp> {
           GoRoute(path: '/internships',   builder: (_, __) => const InternshipScreen()),
           GoRoute(path: '/cv',            builder: (_, __) => const CVScreen()),
           GoRoute(path: '/schedule',      builder: (_, __) => const ScheduleScreen()),
-          GoRoute(path: '/messages',      builder: (_, __) => const MessagesScreen()),
           GoRoute(path: '/profile',       builder: (_, __) => const ProfileScreen()),
         ],
       ),
@@ -95,7 +91,6 @@ class _OyuntanAppState extends State<OyuntanApp> {
           GoRoute(path: '/company/home',     builder: (_, __) => const CompanyHomeScreen()),
           GoRoute(path: '/company/notif',    builder: (_, __) => const NotificationScreen()),
           GoRoute(path: '/company/interns',  builder: (_, __) => const CompanyInternsScreen()),
-          GoRoute(path: '/company/messages', builder: (_, __) => const MessagesScreen()),
           GoRoute(path: '/company/profile',  builder: (_, __) => const ProfileScreen()),
         ],
       ),
@@ -134,11 +129,10 @@ class StudentShell extends StatelessWidget {
     final loc = GoRouterState.of(context).matchedLocation;
     final mn  = context.watch<LocaleProvider>().isMN;
     final tabs = [
-      (p: '/home',        i: Icons.home_outlined,              a: Icons.home_rounded,           l: mn ? 'Нүүр'    : 'Home'),
-      (p: '/internships', i: Icons.work_outline,               a: Icons.work_rounded,           l: mn ? 'Дадлага' : 'Intern'),
-      (p: '/messages',    i: Icons.chat_bubble_outline_rounded, a: Icons.chat_bubble_rounded,   l: mn ? 'Мессеж'  : 'Chat'),
-      (p: '/schedule',    i: Icons.calendar_today_outlined,    a: Icons.calendar_today_rounded, l: mn ? 'Хуваарь' : 'Schedule'),
-      (p: '/profile',     i: Icons.person_outline,             a: Icons.person_rounded,         l: mn ? 'Профайл' : 'Profile'),
+      (p: '/home',        i: Icons.home_outlined,           a: Icons.home_rounded,           l: mn ? 'Нүүр'    : 'Home'),
+      (p: '/internships', i: Icons.work_outline,            a: Icons.work_rounded,           l: mn ? 'Дадлага' : 'Intern'),
+      (p: '/schedule',    i: Icons.calendar_today_outlined, a: Icons.calendar_today_rounded, l: mn ? 'Хуваарь' : 'Schedule'),
+      (p: '/profile',     i: Icons.person_outline,          a: Icons.person_rounded,         l: mn ? 'Профайл' : 'Profile'),
     ];
     final idx = tabs.indexWhere((t) => loc.startsWith(t.p)).clamp(0, tabs.length - 1);
     return Scaffold(
@@ -158,10 +152,9 @@ class CompanyShell extends StatelessWidget {
     final loc = GoRouterState.of(context).matchedLocation;
     final mn  = context.watch<LocaleProvider>().isMN;
     final tabs = [
-      (p: '/company/home',     i: Icons.home_outlined,               a: Icons.home_rounded,          l: mn ? 'Нүүр'    : 'Home'),
-      (p: '/company/interns',  i: Icons.work_outline,                a: Icons.work_rounded,          l: mn ? 'Дадлага' : 'Interns'),
-      (p: '/company/messages', i: Icons.chat_bubble_outline_rounded, a: Icons.chat_bubble_rounded,   l: mn ? 'Мессеж'  : 'Chat'),
-      (p: '/company/profile',  i: Icons.person_outline,              a: Icons.person_rounded,        l: mn ? 'Профайл' : 'Profile'),
+      (p: '/company/home',    i: Icons.home_outlined,  a: Icons.home_rounded,  l: mn ? 'Нүүр'    : 'Home'),
+      (p: '/company/interns', i: Icons.work_outline,   a: Icons.work_rounded,  l: mn ? 'Дадлага' : 'Interns'),
+      (p: '/company/profile', i: Icons.person_outline, a: Icons.person_rounded, l: mn ? 'Профайл' : 'Profile'),
     ];
     final idx = tabs.indexWhere((t) => loc.startsWith(t.p)).clamp(0, tabs.length - 1);
     return Scaffold(
